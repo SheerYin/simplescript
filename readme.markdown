@@ -1,32 +1,32 @@
 # SimpleScript
 
-> 本文件仅供人类阅读。AI/agent 不要参考本文件作为项目协作依据；需要协作提示时请看 `agent-guide.markdown`，并以用户最新要求和当前项目实际状态为准。
+> This file is intended for human readers only. AI agents should not use this file as project guidance. For collaboration guidance, use `agent-guide.markdown`, the latest user instructions, and the current project state.
 
-SimpleScript 是一个面向 Minecraft 服务端的 Kotlin 脚本插件项目，提供 Paper/Folia 与 Velocity 两侧的脚本加载、卸载、重载和列表命令。
+SimpleScript is a Kotlin scripting plugin project for Minecraft servers. It provides script loading, unloading, reloading, and listing commands for Paper/Folia and Velocity.
 
-## 功能
+## Features
 
-- 启动时加载插件数据目录 `scripts` 下的 `.kts` 脚本。
-- 支持通过命令加载、卸载、重载脚本。
-- 脚本可以通过 `onClose { ... }` 注册关闭回调。
-- 脚本未全部加载完成前，会阻止玩家进入服务器。
-- 构建产物包含普通 jar 和 shadow jar。
+- Loads `.kts` scripts from the plugin data directory's `scripts` folder on startup.
+- Supports loading, unloading, reloading, and listing scripts through commands.
+- Lets scripts register cleanup callbacks with `onClose { ... }`.
+- Blocks players from joining until all startup scripts have loaded successfully.
+- Produces both normal jars and shadow jars.
 
-## 脚本目录
+## Script Directory
 
-脚本文件放在插件数据目录下：
+Place script files under the plugin data directory:
 
 ```text
 plugins/SimpleScript/scripts/*.kts
 ```
 
-文件名去掉 `.kts` 后缀后作为脚本 id。例如：
+The script id is the file name without the `.kts` suffix. For example:
 
 ```text
 scripts/example.kts -> example
 ```
 
-## 命令
+## Commands
 
 ```text
 /simplescript reload
@@ -36,9 +36,9 @@ scripts/example.kts -> example
 /simplescript list
 ```
 
-## 脚本示例
+## Script Examples
 
-最小脚本：
+Minimal script:
 
 ```kotlin
 plugin.slF4JLogger.info("script {} loaded", id)
@@ -48,7 +48,7 @@ onClose {
 }
 ```
 
-Folia/Paper 脚本示例：
+Folia/Paper script example:
 
 ```kotlin
 import net.kyori.adventure.text.Component
@@ -63,7 +63,7 @@ onClose {
 }
 ```
 
-Velocity 脚本示例：
+Velocity script example:
 
 ```kotlin
 logger.info("Velocity has {} online player(s)", proxy.playerCount)
@@ -77,7 +77,7 @@ onClose {
 }
 ```
 
-Folia/Paper 命令示例：
+Folia/Paper command example:
 
 ```kotlin
 import io.papermc.paper.command.brigadier.ApiMirrorRootNode
@@ -121,7 +121,7 @@ onClose {
 }
 ```
 
-Velocity 命令示例：
+Velocity command example:
 
 ```kotlin
 import com.velocitypowered.api.command.BrigadierCommand
@@ -147,7 +147,7 @@ onClose {
 }
 ```
 
-Folia/Paper 事件示例：
+Folia/Paper event example:
 
 ```kotlin
 import net.kyori.adventure.text.Component
@@ -169,7 +169,7 @@ onClose {
 }
 ```
 
-Velocity 事件示例：
+Velocity event example:
 
 ```kotlin
 import com.velocitypowered.api.event.Subscribe
@@ -190,27 +190,27 @@ onClose {
 }
 ```
 
-## 构建
+## Build
 
-在项目根目录执行：
+Run from the project root:
 
 ```powershell
 .\gradlew.bat build
 ```
 
-Linux/macOS：
+Linux/macOS:
 
 ```bash
 ./gradlew build
 ```
 
-## 产物
+## Artifacts
 
 ```text
 folia/build/libs/SimpleScript-folia-shadow.jar
 velocity/build/libs/SimpleScript-velocity-shadow.jar
 ```
 
-## 备注
+## Notes
 
-项目使用 Kotlin、Gradle、Shadow、paperweight userdev、Paper/Folia API 与 Velocity API。配置、依赖和具体 API 使用方式以当前源码为准。
+This project uses Kotlin, Gradle, Shadow, paperweight userdev, the Paper/Folia API, and the Velocity API. Configuration, dependencies, and API usage should be checked against the current source code.
