@@ -8,6 +8,7 @@ import org.slf4j.Logger
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.ScriptDiagnostic
 
@@ -19,46 +20,40 @@ class SimpleScriptManager(
     private val logger: Logger
 ) {
     private val scriptDirectory: Path = dataDirectory.resolve(SCRIPT_DIRECTORY).normalize()
-    private val closeMap = ConcurrentHashMap<String, MutableList<() -> Unit>>()
+    val closeHandlers = ConcurrentHashMap<String, CopyOnWriteArrayList<() -> Unit>>()
     private val mutex = Mutex()
 
-    suspend fun reload(): Int = mutex.withLock {
-        closeRunningScripts()
+    suspend fun load(): LoadSummary = mutex.withLock {
         Files.createDirectories(scriptDirectory)
 
         val scripts = listScriptFiles()
-        try {
-            for (scriptPath in scripts) {
-                val scriptId = scriptId(scriptPath)
-                closeScript(scriptId)
+        var loaded = 0
+        val failed = mutableListOf<String>()
+        for (scriptPath in scripts) {
+            val scriptId = scriptId(scriptPath)
+
+            try {
+                if (closeHandlers.putIfAbsent(scriptId, CopyOnWriteArrayList()) != null) {
+                    continue
+                }
                 evaluateScript(scriptId, scriptPath)
+                loaded += 1
                 logger.info("Started script {} from {}", scriptId, scriptPath)
+            } catch (exception: Exception) {
+                failed += scriptId
+                closeScript(scriptId)
+                logger.error("Failed to start script {} from {}", scriptId, scriptPath, exception)
             }
-        } catch (exception: Exception) {
-            closeRunningScripts()
-            throw exception
         }
 
-        scripts.size
+        LoadSummary(
+            loaded = loaded,
+            failed = failed
+        )
     }
 
-    suspend fun reloadOne(scriptId: String): ReloadResult = mutex.withLock {
-        if (!closeMap.containsKey(scriptId)) {
-            return@withLock ReloadResult.NOT_LOADED
-        }
-        val scriptPath = scriptDirectory.resolve("$scriptId.$SIMPLE_SCRIPT_EXTENSION")
-        if (!Files.isRegularFile(scriptPath)) {
-            return@withLock ReloadResult.FILE_MISSING
-        }
-
-        closeScript(scriptId)
-        evaluateScript(scriptId, scriptPath)
-        logger.info("Started script {} from {}", scriptId, scriptPath)
-        ReloadResult.RELOADED
-    }
-
-    suspend fun loadOne(scriptId: String): LoadResult = mutex.withLock {
-        if (closeMap.containsKey(scriptId)) {
+    suspend fun load(scriptId: String): LoadResult = mutex.withLock {
+        if (closeHandlers.containsKey(scriptId)) {
             return@withLock LoadResult.ALREADY_LOADED
         }
         val scriptPath = scriptDirectory.resolve("$scriptId.$SIMPLE_SCRIPT_EXTENSION")
@@ -66,20 +61,30 @@ class SimpleScriptManager(
             return@withLock LoadResult.NOT_FOUND
         }
 
-        evaluateScript(scriptId, scriptPath)
-        logger.info("Started script {} from {}", scriptId, scriptPath)
-        LoadResult.LOADED
-    }
-
-    suspend fun unloadOne(scriptId: String): Boolean = mutex.withLock {
-        if (!closeMap.containsKey(scriptId)) {
-            return@withLock false
+        try {
+            if (closeHandlers.putIfAbsent(scriptId, CopyOnWriteArrayList()) != null) {
+                return@withLock LoadResult.ALREADY_LOADED
+            }
+            evaluateScript(scriptId, scriptPath)
+            logger.info("Started script {} from {}", scriptId, scriptPath)
+            LoadResult.LOADED
+        } catch (exception: Exception) {
+            closeScript(scriptId)
+            throw exception
         }
-        closeScript(scriptId)
-        true
     }
 
-    fun loadedScriptIds(): Set<String> = closeMap.keys.toSet()
+    suspend fun unload() {
+        mutex.withLock {
+            closeRunningScripts()
+        }
+    }
+
+    suspend fun unload(scriptId: String): Boolean = mutex.withLock {
+        closeScript(scriptId)
+    }
+
+    fun loadedScriptIds(): Set<String> = closeHandlers.keys.toSet()
 
     fun availableScriptIds(): List<String> {
         if (!Files.isDirectory(scriptDirectory)) {
@@ -89,9 +94,7 @@ class SimpleScriptManager(
     }
 
     suspend fun close() {
-        mutex.withLock {
-            closeRunningScripts()
-        }
+        unload()
     }
 
     private fun listScriptFiles(): List<Path> {
@@ -125,25 +128,26 @@ class SimpleScriptManager(
     }
 
     private fun closeRunningScripts() {
-        val scriptIds = closeMap.keys.toList().asReversed()
-        for (scriptId in scriptIds) {
+        while (true) {
+            val scriptId = closeHandlers.keys.firstOrNull() ?: return
             closeScript(scriptId)
         }
     }
 
-    private fun closeScript(scriptId: String) {
-        val closeHandlers = closeMap.remove(scriptId)?.asReversed()?.toList() ?: return
-        for (closeHandler in closeHandlers) {
+    private fun closeScript(scriptId: String): Boolean {
+        val handlers = closeHandlers.remove(scriptId)?.asReversed()?.toList() ?: return false
+        for (closeHandler in handlers) {
             try {
                 closeHandler()
             } catch (exception: Exception) {
                 logger.error("Failed to close script {}", scriptId, exception)
             }
         }
+        return true
     }
 
     private fun onClose(scriptId: String, block: () -> Unit) {
-        closeMap.getOrPut(scriptId) { mutableListOf() } += block
+        closeHandlers[scriptId]?.add(block)
     }
 
     private fun scriptId(scriptPath: Path): String {
@@ -177,8 +181,7 @@ enum class LoadResult {
     NOT_FOUND
 }
 
-enum class ReloadResult {
-    RELOADED,
-    NOT_LOADED,
-    FILE_MISSING
-}
+data class LoadSummary(
+    val loaded: Int,
+    val failed: List<String>
+)

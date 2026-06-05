@@ -45,9 +45,18 @@ class SimpleScript : JavaPlugin() {
         scope.launch {
             try {
                 ready = false
-                val count = scriptManager.reload()
+                val scriptLoadSummary = scriptManager.load()
                 ready = true
-                slF4JLogger.info("Loaded {} script(s)", count)
+                if (scriptLoadSummary.failed.isEmpty()) {
+                    slF4JLogger.info("Scripts loaded: {}", scriptLoadSummary.loaded)
+                } else {
+                    slF4JLogger.warn(
+                        "Scripts loaded: {}, failed: {} ({})",
+                        scriptLoadSummary.loaded,
+                        scriptLoadSummary.failed.size,
+                        scriptLoadSummary.failed.joinToString(", ")
+                    )
+                }
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {

@@ -51,9 +51,18 @@ class SimpleScriptVelocity @Inject constructor(
         scope.launch {
             try {
                 ready = false
-                val count = scriptManager.reload()
+                val scriptLoadSummary = scriptManager.load()
                 ready = true
-                logger.info("Loaded {} script(s)", count)
+                if (scriptLoadSummary.failed.isEmpty()) {
+                    logger.info("Scripts loaded: {}", scriptLoadSummary.loaded)
+                } else {
+                    logger.warn(
+                        "Scripts loaded: {}, failed: {} ({})",
+                        scriptLoadSummary.loaded,
+                        scriptLoadSummary.failed.size,
+                        scriptLoadSummary.failed.joinToString(", ")
+                    )
+                }
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {

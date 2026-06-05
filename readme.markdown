@@ -9,7 +9,8 @@ SimpleScript is a Kotlin scripting plugin project for Minecraft servers. It prov
 - Loads `.kts` scripts from the plugin data directory's `scripts` folder on startup.
 - Supports loading, unloading, reloading, and listing scripts through commands.
 - Lets scripts register cleanup callbacks with `onClose { ... }`.
-- Blocks players from joining until all startup scripts have loaded successfully.
+- Blocks players from joining until the startup script load pass has finished.
+- Keeps startup resilient: a broken script is reported and cleaned up without preventing other scripts from loading.
 - Produces both normal jars and shadow jars.
 
 ## What Scripts Can Do
@@ -51,6 +52,17 @@ scripts/example.kts -> example
 /simplescript unload <id>
 /simplescript list
 ```
+
+`load` starts scripts that are not already loaded. During startup and full reloads, scripts are loaded independently: if one script fails, SimpleScript cleans up that script's partial state, logs the failure, and continues loading the remaining scripts. System-level load failures, such as being unable to create or scan the script directory, keep the plugin in its not-ready state so players continue to be rejected until the problem is fixed.
+
+`reload` is a command-level convenience operation:
+
+```text
+reload      = unload all + load all
+reload <id> = unload <id> + load <id>
+```
+
+If a full reload has failures, the command reports how many scripts loaded and lists the failed script ids.
 
 ## Script Examples
 

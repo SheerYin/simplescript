@@ -64,7 +64,7 @@ class SimpleScriptCommand(
             Commands.literal("reload")
                 .requires { source -> hasPermission(source, permissionScriptReload) }
                 .executes { context ->
-                    reloadAll(context.source.sender)
+                    reload(context.source.sender)
                     return@executes 1
                 }
                 .then(
@@ -74,7 +74,7 @@ class SimpleScriptCommand(
                             builder.buildFuture()
                         }
                         .executes { context ->
-                            reloadOne(
+                            reload(
                                 context.source.sender,
                                 StringArgumentType.getString(context, "id")
                             )
@@ -89,7 +89,7 @@ class SimpleScriptCommand(
                     Commands.argument("id", StringArgumentType.word())
                         .suggests { _, builder -> suggestUnloadedAsync(builder) }
                         .executes { context ->
-                            loadOne(
+                            load(
                                 context.source.sender,
                                 StringArgumentType.getString(context, "id")
                             )
@@ -107,7 +107,7 @@ class SimpleScriptCommand(
                             builder.buildFuture()
                         }
                         .executes { context ->
-                            unloadOne(
+                            unload(
                                 context.source.sender,
                                 StringArgumentType.getString(context, "id")
                             )
@@ -119,19 +119,20 @@ class SimpleScriptCommand(
             Commands.literal("list")
                 .requires { source -> hasPermission(source, permissionScriptList) }
                 .executes { context ->
-                    listScripts(context.source.sender)
+                    list(context.source.sender)
                     return@executes 1
                 }
         )
         .build()
 
-    private fun reloadAll(sender: CommandSender) {
+    private fun reload(sender: CommandSender) {
         coroutineScope.launch {
             try {
                 (plugin as? SimpleScript)?.ready = false
-                val count = scriptManager.reload()
+                scriptManager.unload()
+                val summary = scriptManager.load()
                 (plugin as? SimpleScript)?.ready = true
-                sender.sendMessage(prefixMessage("Reloaded $count script(s)"))
+                sendLoadSummary(sender, "Reloaded", summary)
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
@@ -141,13 +142,18 @@ class SimpleScriptCommand(
         }
     }
 
-    private fun reloadOne(sender: CommandSender, scriptId: String) {
+    private fun reload(sender: CommandSender, scriptId: String) {
         coroutineScope.launch {
             try {
-                when (scriptManager.reloadOne(scriptId)) {
-                    ReloadResult.RELOADED -> sender.sendMessage(prefixMessage("Reloaded script $scriptId"))
-                    ReloadResult.NOT_LOADED -> sender.sendMessage(prefixMessage().append(Component.text("Script not loaded: $scriptId", NamedTextColor.RED)))
-                    ReloadResult.FILE_MISSING -> sender.sendMessage(prefixMessage().append(Component.text("Script file missing: $scriptId", NamedTextColor.RED)))
+                if (!scriptManager.unload(scriptId)) {
+                    sender.sendMessage(prefixMessage().append(Component.text("Script not loaded: $scriptId", NamedTextColor.RED)))
+                    return@launch
+                }
+
+                when (scriptManager.load(scriptId)) {
+                    LoadResult.LOADED -> sender.sendMessage(prefixMessage("Reloaded script $scriptId"))
+                    LoadResult.ALREADY_LOADED -> sender.sendMessage(prefixMessage().append(Component.text("Script already loaded: $scriptId", NamedTextColor.RED)))
+                    LoadResult.NOT_FOUND -> sender.sendMessage(prefixMessage().append(Component.text("Script file missing: $scriptId", NamedTextColor.RED)))
                 }
             } catch (exception: CancellationException) {
                 throw exception
@@ -158,10 +164,10 @@ class SimpleScriptCommand(
         }
     }
 
-    private fun loadOne(sender: CommandSender, scriptId: String) {
+    private fun load(sender: CommandSender, scriptId: String) {
         coroutineScope.launch {
             try {
-                when (scriptManager.loadOne(scriptId)) {
+                when (scriptManager.load(scriptId)) {
                     LoadResult.LOADED -> sender.sendMessage(prefixMessage("Loaded script $scriptId"))
                     LoadResult.ALREADY_LOADED -> sender.sendMessage(prefixMessage().append(Component.text("Script already loaded: $scriptId", NamedTextColor.RED)))
                     LoadResult.NOT_FOUND -> sender.sendMessage(prefixMessage().append(Component.text("Script not found: $scriptId", NamedTextColor.RED)))
@@ -175,10 +181,10 @@ class SimpleScriptCommand(
         }
     }
 
-    private fun unloadOne(sender: CommandSender, scriptId: String) {
+    private fun unload(sender: CommandSender, scriptId: String) {
         coroutineScope.launch {
             try {
-                val unloaded = scriptManager.unloadOne(scriptId)
+                val unloaded = scriptManager.unload(scriptId)
                 if (!unloaded) {
                     sender.sendMessage(prefixMessage().append(Component.text("Script not loaded: $scriptId", NamedTextColor.RED)))
                     return@launch
@@ -193,7 +199,7 @@ class SimpleScriptCommand(
         }
     }
 
-    private fun listScripts(sender: CommandSender) {
+    private fun list(sender: CommandSender) {
         val ids = scriptManager.loadedScriptIds().sorted()
         if (ids.isEmpty()) {
             sender.sendMessage(prefixMessage("No scripts loaded"))
@@ -202,6 +208,24 @@ class SimpleScriptCommand(
         sender.sendMessage(prefixMessage("Loaded ${ids.size} script(s):"))
         for (id in ids) {
             sender.sendMessage(prefixMessage("  - $id"))
+        }
+    }
+
+    private fun sendLoadSummary(sender: CommandSender, action: String, summary: LoadSummary) {
+        if (summary.failed.isEmpty()) {
+            sender.sendMessage(prefixMessage("$action ${summary.loaded} script(s)"))
+            return
+        }
+
+        sender.sendMessage(
+            prefixMessage()
+                .append(Component.text("$action ${summary.loaded} script(s), failed ${summary.failed.size} script(s)", NamedTextColor.RED))
+        )
+        for (id in summary.failed.sorted()) {
+            sender.sendMessage(
+                prefixMessage()
+                    .append(Component.text("  - $id", NamedTextColor.RED))
+            )
         }
     }
 
