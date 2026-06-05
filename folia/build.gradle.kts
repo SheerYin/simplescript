@@ -68,7 +68,7 @@ paperPluginYaml {
 }
 
 val generatePaperLibraries by tasks.registering {
-    val outputFile = layout.buildDirectory.file("generated/paper/libraries.txt")
+    val outputFile = layout.buildDirectory.file("generated/paper/libraries.text")
     outputs.file(outputFile)
     inputs.files(configurations.runtimeClasspath)
 
@@ -101,7 +101,7 @@ class LibrariesTextLibrariesRemover : ResourceTransformer {
     private var transformed = false
 
     override fun canTransformResource(element: FileTreeElement): Boolean {
-        val isTarget = element.relativePath.pathString == "libraries.txt"
+        val isTarget = element.relativePath.pathString == "libraries.text"
         if (isTarget) {
             transformed = true
         }
@@ -116,7 +116,7 @@ class LibrariesTextLibrariesRemover : ResourceTransformer {
     }
 
     override fun modifyOutputStream(os: ZipOutputStream, preserveFileTimestamps: Boolean) {
-        val entry = ZipEntry("libraries.txt")
+        val entry = ZipEntry("libraries.text")
         entry.time = System.currentTimeMillis()
         os.putNextEntry(entry)
         os.write(ByteArray(0))

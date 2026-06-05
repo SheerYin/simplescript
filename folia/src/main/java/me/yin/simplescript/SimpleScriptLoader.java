@@ -27,9 +27,9 @@ public class SimpleScriptLoader implements PluginLoader {
                 ).build()
         );
 
-        var inputStream = SimpleScriptLoader.class.getClassLoader().getResourceAsStream("libraries.txt");
+        var inputStream = SimpleScriptLoader.class.getClassLoader().getResourceAsStream("libraries.text");
         if (inputStream == null) {
-            throw new IllegalStateException("Missing libraries.txt in plugin jar");
+            throw new IllegalStateException("Missing libraries.text in plugin jar");
         }
 
         try (var reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
