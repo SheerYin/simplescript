@@ -46,7 +46,6 @@ Paper 和 Folia 都通过 `paperweight-userdev` 插件接入开发依赖；区�
 - Paper Command API 参数：<https://docs.papermc.io/paper/dev/command-api/arguments/paper/>
 - Paper Plugins / Bootstrapper / Loader：<https://docs.papermc.io/paper/dev/getting-started/paper-plugins/>
 - Paperweight Userdev：<https://docs.papermc.io/paper/dev/userdev/>
-- Paper plugin.yml：<https://docs.papermc.io/paper/dev/plugin-yml/>
 - Paper Component API：<https://docs.papermc.io/paper/dev/component-api/introduction/>
 - Paper Audiences：<https://docs.papermc.io/paper/dev/component-api/audiences/>
 - Paper Event Listeners：<https://docs.papermc.io/paper/dev/event-listeners/>
@@ -64,9 +63,7 @@ Paper 和 Folia 都通过 `paperweight-userdev` 插件接入开发依赖；区�
 - Paper Registries（实验性）：<https://docs.papermc.io/paper/dev/registries/>
 - Paper Dialog API（实验性）：<https://docs.papermc.io/paper/dev/dialogs/>
 - Paper Recipes：<https://docs.papermc.io/paper/dev/recipes/>
-- Paper Using Databases：<https://docs.papermc.io/paper/dev/using-databases/>
 - Paper Debugging：<https://docs.papermc.io/paper/dev/debugging/>
-- Paper Profiling：<https://docs.papermc.io/paper/profiling/>
 - Configurate：[SpongePowered/Configurate](https://github.com/SpongePowered/Configurate)
 - Velocity 源码：[PaperMC/Velocity](https://github.com/PaperMC/Velocity)
 - Velocity Command API：<https://docs.papermc.io/velocity/dev/command-api/>
