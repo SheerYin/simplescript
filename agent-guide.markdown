@@ -12,8 +12,9 @@
 
 - 除非明确需要，一般不主动执行完整构建。
 - 代码以可读性优先，避免过度使用难懂的语法糖。
-- 实现命令时使用平台对应的 Brigadier 接入：Paper/Folia 参考 Paper Brigadier API 和 lifecycle command registration；Velocity 使用 `BrigadierCommand` / `CommandManager`。
-- 涉及 `paper-plugin.yml`、`plugin.yml`、插件依赖、Bootstrapper 或 `PluginLoader` 时优先参考 Paper 插件加载相关文档。
+- 服务端侧实现优先按 Folia 语义编写；Folia 兼容 Paper 时，不为 Paper 单独退回传统 Bukkit/Paper 主线程写法。
+- 服务端侧命令优先按 Folia/Paper 的 Paper Brigadier API 和 lifecycle command registration 编写；Velocity 使用 `BrigadierCommand` / `CommandManager`。
+- 涉及 `paper-plugin.yml`、插件依赖、Bootstrapper 或 `PluginLoader` 时优先参考 Paper 插件加载相关文档。
 - 发送玩家可见文本时优先使用 Adventure Component/Audience API，避免 legacy color code 字符串。
 - 修改物品数据时优先参考 Paper Data Component API；注意该 API 仍处于实验阶段，跨版本兼容性以实际目标版本为准。
 - 保存插件自定义持久化数据或标记时优先使用 Persistent Data Container（PDC），避免依赖 lore、显示名或内部 NBT。
