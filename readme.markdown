@@ -12,6 +12,22 @@ SimpleScript is a Kotlin scripting plugin project for Minecraft servers. It prov
 - Blocks players from joining until all startup scripts have loaded successfully.
 - Produces both normal jars and shadow jars.
 
+## What Scripts Can Do
+
+Scripts run on the plugin classpath, so they can use the same APIs and bundled libraries as the plugin. Typical use cases include:
+
+- Dynamically registering and unregistering Paper/Folia or Velocity commands.
+- Registering and unregistering Paper/Folia or Velocity event listeners.
+- Sending Adventure `Component` messages to players and command sources.
+- Reading and writing JSON with kotlinx.serialization.
+- Storing local data with SQLite.
+- Connecting to PostgreSQL with JDBC or HikariCP.
+- Communicating with Redis through Lettuce.
+- Running background work with Kotlin coroutines.
+- Using Folia-aware scheduling helpers such as `runGlobalRegionAndWait` and `runRegionAndWait` on the Folia/Paper side.
+
+Scripts should clean up anything they register or open by using `onClose { ... }`.
+
 ## Script Directory
 
 Place script files under the plugin data directory:
