@@ -45,6 +45,8 @@ scripts/example.kts -> example
 
 ## Commands
 
+Folia/Paper:
+
 ```text
 /simplescript reload
 /simplescript reload <id>
@@ -52,6 +54,20 @@ scripts/example.kts -> example
 /simplescript unload <id>
 /simplescript list
 ```
+
+Alias: `/ss`
+
+Velocity:
+
+```text
+/simplescriptvelocity reload
+/simplescriptvelocity reload <id>
+/simplescriptvelocity load <id>
+/simplescriptvelocity unload <id>
+/simplescriptvelocity list
+```
+
+Alias: `/ssv`
 
 `load` starts scripts that are not already loaded. During startup and full reloads, scripts are loaded independently: if one script fails, SimpleScript cleans up that script's partial state, logs the failure, and continues loading the remaining scripts. System-level load failures, such as being unable to create or scan the script directory, keep the plugin in its not-ready state so players continue to be rejected until the problem is fixed.
 

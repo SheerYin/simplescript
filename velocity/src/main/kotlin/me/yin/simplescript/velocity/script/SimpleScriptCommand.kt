@@ -48,6 +48,7 @@ class SimpleScriptCommand(
     fun register() {
         val command = BrigadierCommand(rootCommand())
         val meta = proxy.commandManager.metaBuilder(command)
+            .aliases(*COMMAND_ALIASES.toTypedArray())
             .plugin(simpleScriptVelocity)
             .build()
         proxy.commandManager.register(meta, command)
@@ -269,6 +270,7 @@ class SimpleScriptCommand(
         source.sendMessage(prefixMessage("/$MAIN_COMMAND load <id>"))
         source.sendMessage(prefixMessage("/$MAIN_COMMAND unload <id>"))
         source.sendMessage(prefixMessage("/$MAIN_COMMAND list"))
+        source.sendMessage(prefixMessage("Aliases: ${COMMAND_ALIASES.joinToString { "/$it" }}"))
     }
 
     private fun prefixMessage(message: String = ""): Component {
@@ -281,6 +283,7 @@ class SimpleScriptCommand(
     }
 
     companion object {
-        const val MAIN_COMMAND = "simplescript"
+        const val MAIN_COMMAND = "simplescriptvelocity"
+        val COMMAND_ALIASES = listOf("ssv")
     }
 }

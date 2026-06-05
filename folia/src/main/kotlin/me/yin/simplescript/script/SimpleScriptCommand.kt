@@ -49,7 +49,7 @@ class SimpleScriptCommand(
             event.registrar().register(
                 rootCommand(),
                 "SimpleScript commands",
-                emptyList()
+                COMMAND_ALIASES
             )
         }
     }
@@ -276,6 +276,7 @@ class SimpleScriptCommand(
         sender.sendMessage(prefixMessage("/$MAIN_COMMAND load <id>"))
         sender.sendMessage(prefixMessage("/$MAIN_COMMAND unload <id>"))
         sender.sendMessage(prefixMessage("/$MAIN_COMMAND list"))
+        sender.sendMessage(prefixMessage("Aliases: ${COMMAND_ALIASES.joinToString { "/$it" }}"))
     }
 
     private fun prefixMessage(message: String = ""): Component {
@@ -289,5 +290,6 @@ class SimpleScriptCommand(
 
     companion object {
         const val MAIN_COMMAND = "simplescript"
+        val COMMAND_ALIASES = listOf("ss")
     }
 }
