@@ -19,6 +19,9 @@
 - 修改物品数据时优先参考 Paper Data Component API；注意该 API 仍处于实验阶段，跨版本兼容性以实际目标版本为准。
 - 保存插件自定义持久化数据或标记时优先使用 Persistent Data Container（PDC），避免依赖 lore、显示名或内部 NBT。
 - 使用调度器时统一优先使用 Folia scheduler；即使目标是 Paper，也推荐按 Folia 的全局/区域线程语义编写，避免依赖传统 Bukkit 主线程假设。
+- 不假设存在唯一主线程；涉及世界、实体、区块、玩家状态的操作必须回到对应的 Folia 全局/区域/实体调度器。
+- IO、数据库、Redis、网络请求等阻塞操作放到协程 IO 线程或其它异步执行环境中；完成后再切回合适的 Folia scheduler 操作游戏对象。
+- 不在区域线程或全局线程上阻塞等待 `Future`、数据库、网络或长时间计算；需要等待结果时使用 suspend/callback 组合。
 - 涉及跨区块/未加载区块传送时优先参考异步传送 API，不要在主线程阻塞等待 future。
 - 配置文件读写优先使用 Configurate；Kotlin 项目优先结合 `configurate-yaml` 与 `configurate-extra-kotlin`。
 
