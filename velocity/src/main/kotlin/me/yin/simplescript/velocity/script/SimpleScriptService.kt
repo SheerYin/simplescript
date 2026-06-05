@@ -18,13 +18,13 @@ import kotlin.script.experimental.host.toScriptSource
 const val SIMPLE_SCRIPT_EXTENSION = "kts"
 
 class SimpleScriptService(
-    private val plugin: SimpleScriptVelocity
+    private val simpleScriptVelocity: SimpleScriptVelocity
 ) {
     private val scriptingHost = BasicJvmScriptingHost()
     private val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<SimpleScriptFile> {
         jvm {
             dependenciesFromClassloader(
-                classLoader = plugin.javaClass.classLoader,
+                classLoader = simpleScriptVelocity.javaClass.classLoader,
                 wholeClasspath = true
             )
         }
@@ -35,7 +35,7 @@ class SimpleScriptService(
             constructorArgs(scope)
 
             jvm {
-                baseClassLoader(plugin.javaClass.classLoader)
+                baseClassLoader(simpleScriptVelocity.javaClass.classLoader)
             }
         }
 
@@ -57,8 +57,8 @@ abstract class SimpleScriptFile(
     val id: String
         get() = scope.id
 
-    val plugin: SimpleScriptVelocity
-        get() = scope.plugin
+    val simpleScriptVelocity: SimpleScriptVelocity
+        get() = scope.simpleScriptVelocity
 
     val proxy
         get() = scope.proxy

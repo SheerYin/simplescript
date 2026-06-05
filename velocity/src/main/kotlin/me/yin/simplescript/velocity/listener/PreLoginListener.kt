@@ -7,11 +7,11 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 
 class PreLoginListener(
-    private val plugin: SimpleScriptVelocity
+    private val simpleScriptVelocity: SimpleScriptVelocity
 ) {
     @Subscribe
     fun onPreLogin(event: PreLoginEvent) {
-        if (plugin.ready) {
+        if (simpleScriptVelocity.ready) {
             return
         }
 

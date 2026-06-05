@@ -165,7 +165,7 @@ val command = BrigadierCommand(
 )
 
 val meta = proxy.commandManager.metaBuilder(command)
-    .plugin(plugin)
+    .plugin(simpleScriptVelocity)
     .build()
 
 proxy.commandManager.register(meta, command)
@@ -211,10 +211,10 @@ val listener = object {
     }
 }
 
-proxy.eventManager.register(plugin, listener)
+proxy.eventManager.register(simpleScriptVelocity, listener)
 
 onClose {
-    proxy.eventManager.unregisterListener(plugin, listener)
+    proxy.eventManager.unregisterListener(simpleScriptVelocity, listener)
 }
 ```
 

@@ -7,7 +7,7 @@ import java.nio.file.Path
 
 class SimpleScriptScope(
     val id: String,
-    val plugin: SimpleScriptVelocity,
+    val simpleScriptVelocity: SimpleScriptVelocity,
     val proxy: ProxyServer,
     val dataDirectory: Path,
     val logger: Logger,

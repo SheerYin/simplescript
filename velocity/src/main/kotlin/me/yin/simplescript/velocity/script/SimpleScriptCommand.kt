@@ -20,7 +20,7 @@ import org.slf4j.Logger
 import java.util.concurrent.CompletableFuture
 
 class SimpleScriptCommand(
-    private val plugin: Any,
+    private val simpleScriptVelocity: SimpleScriptVelocity,
     private val proxy: ProxyServer,
     private val logger: Logger,
     private val scriptManager: SimpleScriptManager,
@@ -48,7 +48,7 @@ class SimpleScriptCommand(
     fun register() {
         val command = BrigadierCommand(rootCommand())
         val meta = proxy.commandManager.metaBuilder(command)
-            .plugin(plugin)
+            .plugin(simpleScriptVelocity)
             .build()
         proxy.commandManager.register(meta, command)
     }
@@ -126,10 +126,10 @@ class SimpleScriptCommand(
     private fun reload(source: CommandSource) {
         coroutineScope.launch {
             try {
-                (plugin as? SimpleScriptVelocity)?.ready = false
+                simpleScriptVelocity.ready = false
                 scriptManager.unload()
                 val summary = scriptManager.load()
-                (plugin as? SimpleScriptVelocity)?.ready = true
+                simpleScriptVelocity.ready = true
                 sendLoadSummary(source, "Reloaded", summary)
             } catch (exception: CancellationException) {
                 throw exception

@@ -46,7 +46,14 @@ class SimpleScriptVelocity @Inject constructor(
         this.scriptManager = scriptManager
 
         proxy.eventManager.register(this, PreLoginListener(this))
-        SimpleScriptCommand(this, proxy, logger, scriptManager, scope, "简单脚本").register()
+        SimpleScriptCommand(
+            simpleScriptVelocity = this,
+            proxy = proxy,
+            logger = logger,
+            scriptManager = scriptManager,
+            coroutineScope = scope,
+            prefix = "简单脚本"
+        ).register()
 
         scope.launch {
             try {

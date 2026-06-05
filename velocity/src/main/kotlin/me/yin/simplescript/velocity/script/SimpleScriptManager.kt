@@ -13,7 +13,7 @@ import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.ScriptDiagnostic
 
 class SimpleScriptManager(
-    private val plugin: SimpleScriptVelocity,
+    private val simpleScriptVelocity: SimpleScriptVelocity,
     private val proxy: ProxyServer,
     private val dataDirectory: Path,
     private val scriptService: SimpleScriptService,
@@ -110,7 +110,7 @@ class SimpleScriptManager(
     private fun evaluateScript(scriptId: String, scriptPath: Path) {
         val scope = SimpleScriptScope(
             id = scriptId,
-            plugin = plugin,
+            simpleScriptVelocity = simpleScriptVelocity,
             proxy = proxy,
             dataDirectory = dataDirectory,
             logger = logger,
