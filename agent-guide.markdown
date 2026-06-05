@@ -52,7 +52,6 @@ Paper 和 Folia 都通过 `paperweight-userdev` 插件接入开发依赖；区�
 - Paper Lifecycle API：<https://docs.papermc.io/paper/dev/lifecycle/>
 - Paper Data Component API：<https://docs.papermc.io/paper/dev/data-component-api/>
 - Paper Persistent Data Container（PDC）：<https://docs.papermc.io/paper/dev/pdc/>
-- Paper Scheduler：<https://docs.papermc.io/paper/dev/scheduler/>
 - Paper/Folia Plugin Messaging：<https://docs.papermc.io/paper/dev/plugin-messaging/>
 - Paper Supporting Paper and Folia：<https://docs.papermc.io/paper/dev/folia-support/>
 - Paper Plugin Configuration：<https://docs.papermc.io/paper/dev/plugin-configurations/>
@@ -68,5 +67,4 @@ Paper 和 Folia 都通过 `paperweight-userdev` 插件接入开发依赖；区�
 - Velocity 源码：[PaperMC/Velocity](https://github.com/PaperMC/Velocity)
 - Velocity Command API：<https://docs.papermc.io/velocity/dev/command-api/>
 - Velocity Plugin Messaging：<https://docs.papermc.io/velocity/dev/plugin-messaging/>
-- Paper Plugins 入门：<https://docs.papermc.io/paper/dev/getting-started/paper-plugins/>
 - Paper dev 文档索引：<https://docs.papermc.io/paper/dev/>
