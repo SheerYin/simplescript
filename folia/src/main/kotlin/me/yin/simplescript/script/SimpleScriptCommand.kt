@@ -17,11 +17,10 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
-import org.bukkit.plugin.java.JavaPlugin
 import java.util.concurrent.CompletableFuture
 
 class SimpleScriptCommand(
-    private val plugin: JavaPlugin,
+    private val plugin: SimpleScript,
     private val scriptManager: SimpleScriptManager,
     private val coroutineScope: CoroutineScope,
     private val prefix: String
@@ -128,10 +127,10 @@ class SimpleScriptCommand(
     private fun reload(sender: CommandSender) {
         coroutineScope.launch {
             try {
-                (plugin as? SimpleScript)?.ready = false
+                plugin.ready = false
                 scriptManager.unload()
                 val summary = scriptManager.load()
-                (plugin as? SimpleScript)?.ready = true
+                plugin.ready = true
                 sendLoadSummary(sender, "Reloaded", summary)
             } catch (exception: CancellationException) {
                 throw exception

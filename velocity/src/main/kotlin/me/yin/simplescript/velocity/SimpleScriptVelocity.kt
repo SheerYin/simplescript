@@ -10,6 +10,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -27,8 +28,8 @@ class SimpleScriptVelocity @Inject constructor(
     private val proxy: ProxyServer,
     @param:DataDirectory private val dataDirectory: Path
 ) {
-    private var scope: CoroutineScope? = null
-    private var scriptManager: SimpleScriptManager? = null
+    var scope: CoroutineScope? = null
+    var scriptManager: SimpleScriptManager? = null
 
     @Volatile
     var shutdownTimeout = 10.seconds
@@ -88,6 +89,8 @@ class SimpleScriptVelocity @Inject constructor(
             runBlocking {
                 withTimeout(shutdownTimeout) { scriptManager?.close() }
             }
+        } catch (exception: TimeoutCancellationException) {
+            logger.error("Script shutdown timed out after {}", shutdownTimeout, exception)
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
