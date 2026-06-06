@@ -25,7 +25,9 @@ Scripts run on the plugin classpath, so they can use the same APIs and bundled l
 - Connecting to PostgreSQL with JDBC or HikariCP.
 - Communicating with Redis through Lettuce.
 - Running background work with Kotlin coroutines.
-- Using Folia-aware scheduling helpers such as `runGlobalRegionAndWait` and `runRegionAndWait` on the Folia/Paper side.
+- Scheduling Bukkit, Paper, and Folia API access through `runGlobalRegionAndWait` on the Folia/Paper side.
+
+On the Folia/Paper side, scripts are evaluated by SimpleScript and should schedule all Bukkit, Paper, and Folia API access through `runGlobalRegionAndWait { ... }`. Use the same helper from `onClose { ... }` before unregistering listeners, commands, or other server state.
 
 Scripts should clean up anything they register or open by using `onClose { ... }`.
 
@@ -95,15 +97,24 @@ onClose {
 Folia/Paper script example:
 
 ```kotlin
+import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 
-plugin.server.onlinePlayers.forEach { player ->
-    player.sendMessage(Component.text("SimpleScript loaded: $id", NamedTextColor.GREEN))
+runBlocking {
+    plugin.runGlobalRegionAndWait {
+        plugin.server.onlinePlayers.forEach { player ->
+            player.sendMessage(Component.text("SimpleScript loaded: $id", NamedTextColor.GREEN))
+        }
+    }
 }
 
 onClose {
-    plugin.slF4JLogger.info("cleanup folia script {}", id)
+    runBlocking {
+        plugin.runGlobalRegionAndWait {
+            plugin.slF4JLogger.info("cleanup folia script {}", id)
+        }
+    }
 }
 ```
 
@@ -194,6 +205,7 @@ onClose {
 Folia/Paper event example:
 
 ```kotlin
+import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.text.Component
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -206,10 +218,18 @@ val listener = object : Listener {
     }
 }
 
-plugin.server.pluginManager.registerEvents(listener, plugin)
+runBlocking {
+    plugin.runGlobalRegionAndWait {
+        plugin.server.pluginManager.registerEvents(listener, plugin)
+    }
+}
 
 onClose {
-    PlayerJoinEvent.getHandlerList().unregister(listener)
+    runBlocking {
+        plugin.runGlobalRegionAndWait {
+            PlayerJoinEvent.getHandlerList().unregister(listener)
+        }
+    }
 }
 ```
 
