@@ -29,6 +29,8 @@ Scripts run on the plugin classpath, so they can use the same APIs and bundled l
 
 On the Folia/Paper side, scripts are evaluated by SimpleScript and should schedule all Bukkit, Paper, and Folia API access through `runGlobalRegionAndWait { ... }`. Use the same helper from `onClose { ... }` before unregistering listeners, commands, or other server state.
 
+`onClose { ... }` still runs while the plugin is being disabled. If cleanup code would schedule Bukkit, Paper, or Folia tasks with this plugin, scripts should explicitly check `plugin.isEnabled` and skip that cleanup when the plugin is already disabled. SimpleScript does not skip `onClose` automatically because scripts may still need to close non-Bukkit resources such as files, database connections, Redis clients, or coroutine jobs.
+
 Scripts should clean up anything they register or open by using `onClose { ... }`.
 
 ## Script Directory
@@ -160,6 +162,10 @@ val commandNode = Commands.literal(commandName)
 
 runBlocking {
     plugin.runGlobalRegionAndWait {
+        if (!plugin.isEnabled) {
+            plugin.slF4JLogger.info("skip registering {} because plugin is disabled", commandName)
+            return@runGlobalRegionAndWait
+        }
         root.removeCommand(commandName)
         root.addChild(commandNode)
         refreshCommands()
@@ -169,6 +175,10 @@ runBlocking {
 onClose {
     runBlocking {
         plugin.runGlobalRegionAndWait {
+            if (!plugin.isEnabled) {
+                plugin.slF4JLogger.info("skip unregistering {} because plugin is disabled", commandName)
+                return@runGlobalRegionAndWait
+            }
             root.removeCommand(commandName)
             refreshCommands()
         }
