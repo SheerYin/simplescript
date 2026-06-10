@@ -8,7 +8,8 @@ SimpleScript is a Kotlin scripting plugin project for Minecraft servers. It prov
 
 - Loads `.kts` scripts from the plugin data directory's `scripts` folder on startup.
 - Supports loading, unloading, reloading, and listing scripts through commands.
-- Lets scripts register cleanup callbacks with `onClose { ... }`.
+- Lets scripts register suspend cleanup callbacks with `onUnload { ... }`.
+- Gives each script its own `scriptCoroutineScope`, which is cancelled after unload cleanup finishes.
 - Blocks players from joining until the startup script load pass has finished.
 - Keeps startup resilient: a broken script is reported and cleaned up without preventing other scripts from loading.
 - Produces both normal jars and shadow jars.
@@ -24,14 +25,22 @@ Scripts run on the plugin classpath, so they can use the same APIs and bundled l
 - Storing local data with SQLite.
 - Connecting to PostgreSQL with JDBC or HikariCP.
 - Communicating with Redis through Lettuce.
-- Running background work with Kotlin coroutines.
-- Scheduling Bukkit, Paper, and Folia API access through `runGlobalRegionAndWait` on the Folia/Paper side.
+- Running background work with Kotlin coroutines through `scriptCoroutineScope`.
+- Scheduling Bukkit, Paper, and Folia API access through `globalRegionScheduler`, `regionScheduler`, and `entityScheduler` on the Folia/Paper side.
 
-On the Folia/Paper side, scripts are evaluated by SimpleScript and should schedule all Bukkit, Paper, and Folia API access through `runGlobalRegionAndWait { ... }`. Use the same helper from `onClose { ... }` before unregistering listeners, commands, or other server state.
+On the Folia/Paper side, scripts are evaluated by SimpleScript and can schedule Bukkit, Paper, and Folia API access through the plugin helpers:
 
-`onClose { ... }` still runs while the plugin is being disabled. Synchronous cleanup such as unregistering listeners, removing command nodes, closing files, closing database connections, closing Redis clients, or cancelling coroutine jobs can still run. If cleanup code would schedule Bukkit, Paper, or Folia tasks with this plugin, scripts should explicitly check `plugin.isEnabled` before scheduling and skip only that scheduled work when the plugin is already disabled.
+```kotlin
+plugin.globalRegionScheduler { ... }
+plugin.regionScheduler(world, chunkX, chunkZ) { ... }
+plugin.entityScheduler(entity) { ... }
+```
 
-Scripts should clean up anything they register or open by using `onClose { ... }`.
+These helpers are the recommended default because they keep scripts concise and centralize shutdown behavior. If a coroutine resumes after `delay`, or an `onUnload` cleanup runs while the plugin/server is shutting down, submitting a new task with a disabled plugin can throw. `globalRegionScheduler` runs `block()` immediately when the plugin is already disabled so global cleanup can still finish; region and entity tasks are discarded when they can no longer be scheduled safely. Scripts that need finer control over submission, dropping work, retired callbacks, exception handling, or exact thread semantics can still use the native Folia/Paper schedulers directly.
+
+`onUnload { ... }` still runs while the plugin is being disabled. Synchronous cleanup such as unregistering listeners, removing command nodes, closing files, closing database connections, closing Redis clients, or cancelling coroutine jobs can still run. For Bukkit, Paper, or Folia scheduled work, scripts can call the plugin scheduler helpers directly.
+
+Scripts should clean up anything they register or open by using `onUnload { ... }`. Each script may register at most one unload callback; if a script does not register one, SimpleScript still tracks it and cancels its `scriptCoroutineScope` on unload.
 
 ## Script Directory
 
@@ -91,7 +100,7 @@ Minimal script:
 ```kotlin
 plugin.slF4JLogger.info("script {} loaded", id)
 
-onClose {
+onUnload {
     plugin.slF4JLogger.info("script {} closed", id)
 }
 ```
@@ -99,23 +108,18 @@ onClose {
 Folia/Paper script example:
 
 ```kotlin
-import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 
-runBlocking {
-    plugin.runGlobalRegionAndWait {
-        plugin.server.onlinePlayers.forEach { player ->
-            player.sendMessage(Component.text("SimpleScript loaded: $id", NamedTextColor.GREEN))
-        }
+plugin.globalRegionScheduler {
+    plugin.server.onlinePlayers.forEach { player ->
+        player.sendMessage(Component.text("SimpleScript loaded: $id", NamedTextColor.GREEN))
     }
 }
 
-onClose {
-    runBlocking {
-        plugin.runGlobalRegionAndWait {
-            plugin.slF4JLogger.info("cleanup folia script {}", id)
-        }
+onUnload {
+    plugin.globalRegionScheduler {
+        plugin.slF4JLogger.info("cleanup folia script {}", id)
     }
 }
 ```
@@ -129,7 +133,7 @@ proxy.allPlayers.forEach { player ->
     player.sendMessage(net.kyori.adventure.text.Component.text("SimpleScript loaded: $id"))
 }
 
-onClose {
+onUnload {
     logger.info("cleanup velocity script {}", id)
 }
 ```
@@ -140,7 +144,6 @@ Folia/Paper command example:
 import io.papermc.paper.command.brigadier.ApiMirrorRootNode
 import io.papermc.paper.command.brigadier.Commands
 import io.papermc.paper.command.brigadier.PaperCommands
-import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.text.Component
 
 val commandName = "hello"
@@ -148,10 +151,8 @@ val dispatcher = PaperCommands.INSTANCE.dispatcherInternal
 val root = dispatcher.root as ApiMirrorRootNode
 
 fun refreshCommands() {
-    if (!plugin.isEnabled) return
     plugin.server.onlinePlayers.forEach { player ->
-        if (!plugin.isEnabled) return
-        player.scheduler.run(plugin, { _ -> player.updateCommands() }, null)
+        plugin.entityScheduler(player) { player.updateCommands() }
     }
 }
 
@@ -162,20 +163,16 @@ val commandNode = Commands.literal(commandName)
     }
     .build()
 
-runBlocking {
-    plugin.runGlobalRegionAndWait {
-        root.removeCommand(commandName)
-        root.addChild(commandNode)
-        refreshCommands()
-    }
+plugin.globalRegionScheduler {
+    root.removeCommand(commandName)
+    root.addChild(commandNode)
+    refreshCommands()
 }
 
-onClose {
-    runBlocking {
-        plugin.runGlobalRegionAndWait {
-            root.removeCommand(commandName)
-            refreshCommands()
-        }
+onUnload {
+    plugin.globalRegionScheduler {
+        root.removeCommand(commandName)
+        refreshCommands()
     }
 }
 ```
@@ -201,7 +198,7 @@ val meta = proxy.commandManager.metaBuilder(command)
 
 proxy.commandManager.register(meta, command)
 
-onClose {
+onUnload {
     proxy.commandManager.unregister(meta)
 }
 ```
@@ -209,7 +206,6 @@ onClose {
 Folia/Paper event example:
 
 ```kotlin
-import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.text.Component
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -222,17 +218,13 @@ val listener = object : Listener {
     }
 }
 
-runBlocking {
-    plugin.runGlobalRegionAndWait {
-        plugin.server.pluginManager.registerEvents(listener, plugin)
-    }
+plugin.globalRegionScheduler {
+    plugin.server.pluginManager.registerEvents(listener, plugin)
 }
 
-onClose {
-    runBlocking {
-        plugin.runGlobalRegionAndWait {
-            PlayerJoinEvent.getHandlerList().unregister(listener)
-        }
+onUnload {
+    plugin.globalRegionScheduler {
+        PlayerJoinEvent.getHandlerList().unregister(listener)
     }
 }
 ```
@@ -253,7 +245,7 @@ val listener = object {
 
 proxy.eventManager.register(simpleScriptVelocity, listener)
 
-onClose {
+onUnload {
     proxy.eventManager.unregisterListener(simpleScriptVelocity, listener)
 }
 ```

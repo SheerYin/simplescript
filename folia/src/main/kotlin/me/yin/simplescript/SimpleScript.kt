@@ -12,11 +12,9 @@ import kotlinx.coroutines.withTimeout
 import me.yin.simplescript.listener.AsyncPlayerPreLoginListener
 import me.yin.simplescript.script.SimpleScriptModule
 import org.bukkit.World
+import org.bukkit.entity.Entity
 import org.bukkit.plugin.java.JavaPlugin
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration.Companion.seconds
-import kotlinx.coroutines.suspendCancellableCoroutine
 
 class SimpleScript : JavaPlugin() {
     var scope: CoroutineScope? = null
@@ -87,35 +85,21 @@ class SimpleScript : JavaPlugin() {
         slF4JLogger.info("Disabled {} {}", prefix, pluginMeta.version)
     }
 
-    suspend fun <T> runGlobalRegionAndWait(block: () -> T): T {
-        if (server.isGlobalTickThread || !isEnabled) {
-            return block()
+    fun globalRegionScheduler(block: () -> Unit) {
+        if (!isEnabled) {
+            block()
+            return
         }
-        return suspendCancellableCoroutine { continuation ->
-            val scheduledTask = server.globalRegionScheduler.run(this) { _ ->
-                try {
-                    continuation.resume(block())
-                } catch (exception: Throwable) {
-                    continuation.resumeWithException(exception)
-                }
-            }
-            continuation.invokeOnCancellation { scheduledTask.cancel() }
-        }
+        server.globalRegionScheduler.execute(this) { block() }
     }
 
-    suspend fun <T> runRegionAndWait(world: World, chunkX: Int, chunkZ: Int, block: () -> T): T {
-        if (server.isOwnedByCurrentRegion(world, chunkX, chunkZ) || !isEnabled) {
-            return block()
-        }
-        return suspendCancellableCoroutine { continuation ->
-            val scheduledTask = server.regionScheduler.run(this, world, chunkX, chunkZ) { _ ->
-                try {
-                    continuation.resume(block())
-                } catch (exception: Throwable) {
-                    continuation.resumeWithException(exception)
-                }
-            }
-            continuation.invokeOnCancellation { scheduledTask.cancel() }
-        }
+    fun regionScheduler(world: World, chunkX: Int, chunkZ: Int, block: () -> Unit) {
+        if (!isEnabled) return
+        server.regionScheduler.execute(this, world, chunkX, chunkZ) { block() }
+    }
+
+    fun entityScheduler(entity: Entity, block: () -> Unit, retired: (() -> Unit)? = null) {
+        if (!isEnabled) return
+        entity.scheduler.execute(this, { block() }, retired, 1L)
     }
 }

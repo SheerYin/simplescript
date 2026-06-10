@@ -19,7 +19,10 @@
 - 修改物品数据时优先参考 Paper Data Component API；注意该 API 仍处于实验阶段，跨版本兼容性以实际目标版本为准。
 - 保存插件自定义持久化数据或标记时优先使用 Persistent Data Container（PDC），避免依赖 lore、显示名或内部 NBT。
 - 使用调度器时统一优先使用 Folia scheduler；即使目标是 Paper，也推荐按 Folia 的全局/区域线程语义编写，避免依赖传统 Bukkit 主线程假设。
-- 脚本中发起 Folia/Paper 调度任务时需要考虑 `plugin.isEnabled`；否则服务器关闭后仍尝试调度会抛出异常，这在延迟任务、协程 `delay` 后恢复、`onDisable` 执行清理或 `onClose { ... }` 中尤其常见。
+- SimpleScript 脚本模型使用 `SimpleScriptModule -> SimpleScriptService/SimpleScriptManager/SimpleScriptCommand` 装配；脚本从数据目录 `scripts` 加载，生命周期入口由 `SimpleScriptManager` 串行化。
+- 脚本清理统一使用 `onUnload { ... }`，回调是 `suspend`；每个脚本有独立 `scriptCoroutineScope`，卸载回调结束后该 scope 会被取消。
+- 脚本中发起 Folia/Paper 调度任务时推荐优先使用插件提供的 `plugin.globalRegionScheduler { ... }`、`plugin.regionScheduler(world, chunkX, chunkZ) { ... }`、`plugin.entityScheduler(entity) { ... }`。
+- 这些 helper 是为了减少脚本里的样板代码，并统一处理插件禁用和服务器关闭阶段的调度语义：脚本协程 `delay` 后恢复、`onUnload` 清理、`onDisable` 过程中如果再直接向 Folia/Paper scheduler 提交任务，服务端可能因为插件已经 disabled 而抛出异常。`globalRegionScheduler` 在插件已禁用时会直接执行 `block()`，让全局清理逻辑仍能完成；`regionScheduler` / `entityScheduler` 在不能安全提交时丢弃任务。复杂脚本如果确实需要自己控制提交、丢弃、retired callback、异常处理或线程语义，也可以直接使用原生 Folia/Paper scheduler。
 - 不假设存在唯一主线程；涉及世界、实体、区块、玩家状态的操作必须回到对应的 Folia 全局/区域/实体调度器。
 - IO、数据库、Redis、网络请求等阻塞操作放到协程 IO 线程或其它异步执行环境中；完成后再切回合适的 Folia scheduler 操作游戏对象。
 - 不在区域线程或全局线程上阻塞等待 `Future`、数据库、网络或长时间计算；需要等待结果时使用 suspend/callback 组合。
