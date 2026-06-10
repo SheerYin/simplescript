@@ -1,13 +1,15 @@
 package me.yin.simplescript.script
 
+import kotlinx.coroutines.CoroutineScope
 import me.yin.simplescript.SimpleScript
 
 class SimpleScriptScope(
     val id: String,
     val plugin: SimpleScript,
-    private val closeHandler: (String, () -> Unit) -> Unit
+    val scriptCoroutineScope: CoroutineScope,
+    private val registerUnloadCallback: (String, suspend () -> Unit) -> Unit
 ) {
-    fun onClose(block: () -> Unit) {
-        closeHandler(id, block)
+    fun onUnload(block: suspend () -> Unit) {
+        registerUnloadCallback(id, block)
     }
 }

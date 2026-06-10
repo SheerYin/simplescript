@@ -1,6 +1,7 @@
 package me.yin.simplescript.velocity.script
 
 import com.velocitypowered.api.proxy.ProxyServer
+import kotlinx.coroutines.CoroutineScope
 import me.yin.simplescript.velocity.SimpleScriptVelocity
 import org.slf4j.Logger
 import java.nio.file.Path
@@ -11,9 +12,10 @@ class SimpleScriptScope(
     val proxy: ProxyServer,
     val dataDirectory: Path,
     val logger: Logger,
-    private val closeHandler: (String, () -> Unit) -> Unit
+    val scriptCoroutineScope: CoroutineScope,
+    private val registerUnloadCallback: (String, suspend () -> Unit) -> Unit
 ) {
-    fun onClose(block: () -> Unit) {
-        closeHandler(id, block)
+    fun onUnload(block: suspend () -> Unit) {
+        registerUnloadCallback(id, block)
     }
 }

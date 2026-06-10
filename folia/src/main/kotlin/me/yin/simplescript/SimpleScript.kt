@@ -10,9 +10,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import me.yin.simplescript.listener.AsyncPlayerPreLoginListener
-import me.yin.simplescript.script.SimpleScriptCommand
-import me.yin.simplescript.script.SimpleScriptManager
-import me.yin.simplescript.script.SimpleScriptService
+import me.yin.simplescript.script.SimpleScriptModule
 import org.bukkit.World
 import org.bukkit.plugin.java.JavaPlugin
 import kotlin.coroutines.resume
@@ -22,7 +20,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 class SimpleScript : JavaPlugin() {
     var scope: CoroutineScope? = null
-    var scriptManager: SimpleScriptManager? = null
+    var scriptModule: SimpleScriptModule? = null
 
     @Volatile
     var shutdownTimeout = 10.seconds
@@ -32,20 +30,19 @@ class SimpleScript : JavaPlugin() {
 
     override fun onEnable() {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val scriptService = SimpleScriptService(this)
-        val scriptManager = SimpleScriptManager(this, scriptService, slF4JLogger)
+        val scriptModule = SimpleScriptModule(this, scope)
         val prefix = pluginMeta.loggerPrefix ?: pluginMeta.name
 
         this.scope = scope
-        this.scriptManager = scriptManager
+        this.scriptModule = scriptModule
 
         server.pluginManager.registerEvents(AsyncPlayerPreLoginListener(this), this)
-        SimpleScriptCommand(this, scriptManager, scope, prefix).register()
+        scriptModule.register()
 
         scope.launch {
             try {
                 ready = false
-                val scriptLoadSummary = scriptManager.load()
+                val scriptLoadSummary = scriptModule.load()
                 ready = true
                 if (scriptLoadSummary.failed.isEmpty()) {
                     slF4JLogger.info("Scripts loaded: {}", scriptLoadSummary.loaded)
@@ -72,7 +69,7 @@ class SimpleScript : JavaPlugin() {
 
         try {
             runBlocking {
-                withTimeout(shutdownTimeout) { scriptManager?.close() }
+                withTimeout(shutdownTimeout) { scriptModule?.close() }
             }
         } catch (exception: TimeoutCancellationException) {
             slF4JLogger.error("Script shutdown timed out after {}", shutdownTimeout, exception)
@@ -84,7 +81,7 @@ class SimpleScript : JavaPlugin() {
 
         scope?.cancel()
         scope = null
-        scriptManager = null
+        scriptModule = null
 
         val prefix = pluginMeta.loggerPrefix ?: pluginMeta.name
         slF4JLogger.info("Disabled {} {}", prefix, pluginMeta.version)

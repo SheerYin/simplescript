@@ -1,5 +1,9 @@
 package me.yin.simplescript.script
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.yin.simplescript.SimpleScript
@@ -7,20 +11,71 @@ import org.slf4j.Logger
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.ScriptDiagnostic
 
 class SimpleScriptManager(
     private val plugin: SimpleScript,
     private val scriptService: SimpleScriptService,
+    private val coroutineScope: CoroutineScope,
     private val logger: Logger
 ) {
-    private val scriptDirectory: Path = plugin.dataPath.resolve(SCRIPT_DIRECTORY).normalize()
-    val closeHandlers = ConcurrentHashMap<String, CopyOnWriteArrayList<() -> Unit>>()
-    private val mutex = Mutex()
+    val scriptDirectory: Path = plugin.dataPath.resolve(SCRIPT_DIRECTORY).normalize()
 
-    suspend fun load(): LoadSummary = mutex.withLock {
+    private val lifecycleMutex = Mutex()
+    val unloadCallbacksByScriptId = ConcurrentHashMap<String, suspend () -> Unit>()
+
+    suspend fun load(): LoadSummary {
+        return loadScripts()
+    }
+
+    suspend fun close() {
+        unloadScripts()
+    }
+
+    suspend fun loadScripts(): LoadSummary = lifecycleMutex.withLock {
+        doLoadScripts()
+    }
+
+    suspend fun loadScript(scriptId: String): LoadResult = lifecycleMutex.withLock {
+        doLoadScript(scriptId)
+    }
+
+    suspend fun reloadScripts(): LoadSummary = lifecycleMutex.withLock {
+        doUnloadScripts()
+        doLoadScripts()
+    }
+
+    suspend fun reloadScript(scriptId: String): ReloadResult = lifecycleMutex.withLock {
+        if (!doUnloadScript(scriptId)) {
+            return@withLock ReloadResult.NOT_LOADED
+        }
+
+        when (doLoadScript(scriptId)) {
+            LoadResult.LOADED -> ReloadResult.RELOADED
+            LoadResult.ALREADY_LOADED -> ReloadResult.ALREADY_LOADED
+            LoadResult.NOT_FOUND -> ReloadResult.NOT_FOUND
+        }
+    }
+
+    suspend fun unloadScripts() {
+        lifecycleMutex.withLock {
+            doUnloadScripts()
+        }
+    }
+
+    suspend fun unloadScript(scriptId: String): Boolean = lifecycleMutex.withLock {
+        doUnloadScript(scriptId)
+    }
+
+    fun availableScriptIds(): List<String> {
+        if (!Files.isDirectory(scriptDirectory)) {
+            return emptyList()
+        }
+        return listScriptFiles().map { scriptId(it) }
+    }
+
+    private suspend fun doLoadScripts(): LoadSummary {
         Files.createDirectories(scriptDirectory)
 
         val scripts = listScriptFiles()
@@ -30,7 +85,7 @@ class SimpleScriptManager(
             val scriptId = scriptId(scriptPath)
 
             try {
-                if (closeHandlers.putIfAbsent(scriptId, CopyOnWriteArrayList()) != null) {
+                if (unloadCallbacksByScriptId.containsKey(scriptId)) {
                     continue
                 }
                 evaluateScript(scriptId, scriptPath)
@@ -38,60 +93,51 @@ class SimpleScriptManager(
                 logger.info("Started script {} from {}", scriptId, scriptPath)
             } catch (exception: Exception) {
                 failed += scriptId
-                closeScript(scriptId)
+                doUnloadScript(scriptId)
                 logger.error("Failed to start script {} from {}", scriptId, scriptPath, exception)
             }
         }
 
-        LoadSummary(
+        return LoadSummary(
             loaded = loaded,
             failed = failed
         )
     }
 
-    suspend fun load(scriptId: String): LoadResult = mutex.withLock {
-        if (closeHandlers.containsKey(scriptId)) {
-            return@withLock LoadResult.ALREADY_LOADED
+    private suspend fun doLoadScript(scriptId: String): LoadResult {
+        if (unloadCallbacksByScriptId.containsKey(scriptId)) {
+            return LoadResult.ALREADY_LOADED
         }
         val scriptPath = scriptDirectory.resolve("$scriptId.$SIMPLE_SCRIPT_EXTENSION")
         if (!Files.isRegularFile(scriptPath)) {
-            return@withLock LoadResult.NOT_FOUND
+            return LoadResult.NOT_FOUND
         }
 
         try {
-            if (closeHandlers.putIfAbsent(scriptId, CopyOnWriteArrayList()) != null) {
-                return@withLock LoadResult.ALREADY_LOADED
-            }
             evaluateScript(scriptId, scriptPath)
             logger.info("Started script {} from {}", scriptId, scriptPath)
-            LoadResult.LOADED
+            return LoadResult.LOADED
         } catch (exception: Exception) {
-            closeScript(scriptId)
+            doUnloadScript(scriptId)
             throw exception
         }
     }
 
-    suspend fun unload() {
-        mutex.withLock {
-            closeRunningScripts()
+    private suspend fun doUnloadScripts() {
+        while (true) {
+            val scriptId = unloadCallbacksByScriptId.keys.firstOrNull() ?: return
+            doUnloadScript(scriptId)
         }
     }
 
-    suspend fun unload(scriptId: String): Boolean = mutex.withLock {
-        closeScript(scriptId)
-    }
-
-    fun loadedScriptIds(): Set<String> = closeHandlers.keys.toSet()
-
-    fun availableScriptIds(): List<String> {
-        if (!Files.isDirectory(scriptDirectory)) {
-            return emptyList()
+    private suspend fun doUnloadScript(scriptId: String): Boolean {
+        val unloadCallback = unloadCallbacksByScriptId.remove(scriptId) ?: return false
+        try {
+            unloadCallback()
+        } catch (exception: Exception) {
+            logger.error("Failed to unload script {}", scriptId, exception)
         }
-        return listScriptFiles().map { scriptId(it) }
-    }
-
-    suspend fun close() {
-        unload()
+        return true
     }
 
     private fun listScriptFiles(): List<Path> {
@@ -105,43 +151,50 @@ class SimpleScriptManager(
     }
 
     private fun evaluateScript(scriptId: String, scriptPath: Path) {
+        val parentJob = coroutineScope.coroutineContext[Job]
+        val scriptCoroutineScope = CoroutineScope(coroutineScope.coroutineContext + SupervisorJob(parentJob))
         val scope = SimpleScriptScope(
             id = scriptId,
             plugin = plugin,
-            closeHandler = ::onClose
+            scriptCoroutineScope = scriptCoroutineScope,
+            registerUnloadCallback = { id, block ->
+                val unloadCallback: suspend () -> Unit = {
+                    try {
+                        block()
+                    } finally {
+                        scriptCoroutineScope.cancel()
+                    }
+                }
+                if (unloadCallbacksByScriptId.putIfAbsent(id, unloadCallback) != null) {
+                    throw IllegalStateException("Script $id already registered onUnload")
+                }
+            }
         )
 
-        val result = scriptService.evaluate(scriptPath, scope)
+        val result = try {
+            scriptService.evaluate(scriptPath, scope)
+        } catch (exception: Exception) {
+            if (!unloadCallbacksByScriptId.containsKey(scriptId)) {
+                scriptCoroutineScope.cancel()
+            }
+            throw exception
+        }
         when (result) {
-            is ResultWithDiagnostics.Success -> logReports(result.reports)
+            is ResultWithDiagnostics.Success -> {
+                logReports(result.reports)
+                unloadCallbacksByScriptId.putIfAbsent(scriptId) {
+                    scriptCoroutineScope.cancel()
+                }
+            }
+
             is ResultWithDiagnostics.Failure -> {
                 logReports(result.reports)
+                if (!unloadCallbacksByScriptId.containsKey(scriptId)) {
+                    scriptCoroutineScope.cancel()
+                }
                 throw IllegalStateException("Failed to evaluate script $scriptPath")
             }
         }
-    }
-
-    private fun closeRunningScripts() {
-        while (true) {
-            val scriptId = closeHandlers.keys.firstOrNull() ?: return
-            closeScript(scriptId)
-        }
-    }
-
-    private fun closeScript(scriptId: String): Boolean {
-        val handlers = closeHandlers.remove(scriptId)?.asReversed()?.toList() ?: return false
-        for (closeHandler in handlers) {
-            try {
-                closeHandler()
-            } catch (exception: Exception) {
-                logger.error("Failed to close script {}", scriptId, exception)
-            }
-        }
-        return true
-    }
-
-    private fun onClose(scriptId: String, block: () -> Unit) {
-        closeHandlers[scriptId]?.add(block)
     }
 
     private fun scriptId(scriptPath: Path): String {
@@ -171,6 +224,13 @@ class SimpleScriptManager(
 
 enum class LoadResult {
     LOADED,
+    ALREADY_LOADED,
+    NOT_FOUND
+}
+
+enum class ReloadResult {
+    RELOADED,
+    NOT_LOADED,
     ALREADY_LOADED,
     NOT_FOUND
 }

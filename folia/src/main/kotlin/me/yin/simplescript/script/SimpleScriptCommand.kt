@@ -128,8 +128,7 @@ class SimpleScriptCommand(
         coroutineScope.launch {
             try {
                 plugin.ready = false
-                scriptManager.unload()
-                val summary = scriptManager.load()
+                val summary = scriptManager.reloadScripts()
                 plugin.ready = true
                 sendLoadSummary(sender, "Reloaded", summary)
             } catch (exception: CancellationException) {
@@ -144,15 +143,11 @@ class SimpleScriptCommand(
     private fun reload(sender: CommandSender, scriptId: String) {
         coroutineScope.launch {
             try {
-                if (!scriptManager.unload(scriptId)) {
-                    sender.sendMessage(prefixMessage().append(Component.text("Script not loaded: $scriptId", NamedTextColor.RED)))
-                    return@launch
-                }
-
-                when (scriptManager.load(scriptId)) {
-                    LoadResult.LOADED -> sender.sendMessage(prefixMessage("Reloaded script $scriptId"))
-                    LoadResult.ALREADY_LOADED -> sender.sendMessage(prefixMessage().append(Component.text("Script already loaded: $scriptId", NamedTextColor.RED)))
-                    LoadResult.NOT_FOUND -> sender.sendMessage(prefixMessage().append(Component.text("Script file missing: $scriptId", NamedTextColor.RED)))
+                when (scriptManager.reloadScript(scriptId)) {
+                    ReloadResult.RELOADED -> sender.sendMessage(prefixMessage("Reloaded script $scriptId"))
+                    ReloadResult.NOT_LOADED -> sender.sendMessage(prefixMessage().append(Component.text("Script not loaded: $scriptId", NamedTextColor.RED)))
+                    ReloadResult.ALREADY_LOADED -> sender.sendMessage(prefixMessage().append(Component.text("Script already loaded: $scriptId", NamedTextColor.RED)))
+                    ReloadResult.NOT_FOUND -> sender.sendMessage(prefixMessage().append(Component.text("Script file missing: $scriptId", NamedTextColor.RED)))
                 }
             } catch (exception: CancellationException) {
                 throw exception
@@ -166,7 +161,7 @@ class SimpleScriptCommand(
     private fun load(sender: CommandSender, scriptId: String) {
         coroutineScope.launch {
             try {
-                when (scriptManager.load(scriptId)) {
+                when (scriptManager.loadScript(scriptId)) {
                     LoadResult.LOADED -> sender.sendMessage(prefixMessage("Loaded script $scriptId"))
                     LoadResult.ALREADY_LOADED -> sender.sendMessage(prefixMessage().append(Component.text("Script already loaded: $scriptId", NamedTextColor.RED)))
                     LoadResult.NOT_FOUND -> sender.sendMessage(prefixMessage().append(Component.text("Script not found: $scriptId", NamedTextColor.RED)))
@@ -183,7 +178,7 @@ class SimpleScriptCommand(
     private fun unload(sender: CommandSender, scriptId: String) {
         coroutineScope.launch {
             try {
-                val unloaded = scriptManager.unload(scriptId)
+                val unloaded = scriptManager.unloadScript(scriptId)
                 if (!unloaded) {
                     sender.sendMessage(prefixMessage().append(Component.text("Script not loaded: $scriptId", NamedTextColor.RED)))
                     return@launch
@@ -199,7 +194,7 @@ class SimpleScriptCommand(
     }
 
     private fun list(sender: CommandSender) {
-        val ids = scriptManager.loadedScriptIds().sorted()
+        val ids = scriptManager.unloadCallbacksByScriptId.keys.sorted()
         if (ids.isEmpty()) {
             sender.sendMessage(prefixMessage("No scripts loaded"))
             return
@@ -230,7 +225,7 @@ class SimpleScriptCommand(
 
     private fun suggestLoadedSync(builder: SuggestionsBuilder) {
         val remaining = builder.remainingLowerCase
-        for (id in scriptManager.loadedScriptIds().sorted()) {
+        for (id in scriptManager.unloadCallbacksByScriptId.keys.sorted()) {
             if (id.startsWith(remaining, ignoreCase = true)) {
                 builder.suggest(id)
             }
@@ -244,7 +239,7 @@ class SimpleScriptCommand(
         return coroutineScope.future {
             try {
                 scriptSuggestionSemaphore.withPermit {
-                    val loaded = scriptManager.loadedScriptIds()
+                    val loaded = scriptManager.unloadCallbacksByScriptId.keys
                     val unloaded = scriptManager.availableScriptIds()
                         .filter { it !in loaded }
                         .sorted()

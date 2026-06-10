@@ -1,5 +1,6 @@
 package me.yin.simplescript.script
 
+import kotlinx.coroutines.CoroutineScope
 import me.yin.simplescript.SimpleScript
 import java.nio.file.Path
 import kotlin.script.experimental.annotations.KotlinScript
@@ -60,8 +61,11 @@ abstract class SimpleScriptFile(
     val plugin: SimpleScript
         get() = scope.plugin
 
-    fun onClose(block: () -> Unit) {
-        scope.onClose(block)
+    val scriptCoroutineScope: CoroutineScope
+        get() = scope.scriptCoroutineScope
+
+    fun onUnload(block: suspend () -> Unit) {
+        scope.onUnload(block)
     }
 }
 

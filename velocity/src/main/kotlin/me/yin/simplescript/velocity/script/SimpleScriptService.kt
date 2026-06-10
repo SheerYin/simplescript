@@ -1,6 +1,9 @@
 package me.yin.simplescript.velocity.script
 
+import com.velocitypowered.api.proxy.ProxyServer
+import kotlinx.coroutines.CoroutineScope
 import me.yin.simplescript.velocity.SimpleScriptVelocity
+import org.slf4j.Logger
 import java.nio.file.Path
 import kotlin.script.experimental.annotations.KotlinScript
 import kotlin.script.experimental.api.EvaluationResult
@@ -60,17 +63,20 @@ abstract class SimpleScriptFile(
     val simpleScriptVelocity: SimpleScriptVelocity
         get() = scope.simpleScriptVelocity
 
-    val proxy
+    val proxy: ProxyServer
         get() = scope.proxy
 
     val dataDirectory: Path
         get() = scope.dataDirectory
 
-    val logger
+    val logger: Logger
         get() = scope.logger
 
-    fun onClose(block: () -> Unit) {
-        scope.onClose(block)
+    val scriptCoroutineScope: CoroutineScope
+        get() = scope.scriptCoroutineScope
+
+    fun onUnload(block: suspend () -> Unit) {
+        scope.onUnload(block)
     }
 }
 

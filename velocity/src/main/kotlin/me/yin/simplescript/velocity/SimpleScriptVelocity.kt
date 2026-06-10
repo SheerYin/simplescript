@@ -16,9 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import me.yin.simplescript.velocity.listener.PreLoginListener
-import me.yin.simplescript.velocity.script.SimpleScriptCommand
-import me.yin.simplescript.velocity.script.SimpleScriptManager
-import me.yin.simplescript.velocity.script.SimpleScriptService
+import me.yin.simplescript.velocity.script.SimpleScriptModule
 import org.slf4j.Logger
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.seconds
@@ -29,7 +27,7 @@ class SimpleScriptVelocity @Inject constructor(
     @param:DataDirectory private val dataDirectory: Path
 ) {
     var scope: CoroutineScope? = null
-    var scriptManager: SimpleScriptManager? = null
+    var scriptModule: SimpleScriptModule? = null
 
     @Volatile
     var shutdownTimeout = 10.seconds
@@ -40,26 +38,18 @@ class SimpleScriptVelocity @Inject constructor(
     @Subscribe
     fun onProxyInitialize(event: ProxyInitializeEvent) {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val scriptService = SimpleScriptService(this)
-        val scriptManager = SimpleScriptManager(this, proxy, dataDirectory, scriptService, logger)
+        val scriptModule = SimpleScriptModule(this, proxy, dataDirectory, logger, scope)
 
         this.scope = scope
-        this.scriptManager = scriptManager
+        this.scriptModule = scriptModule
 
         proxy.eventManager.register(this, PreLoginListener(this))
-        SimpleScriptCommand(
-            simpleScriptVelocity = this,
-            proxy = proxy,
-            logger = logger,
-            scriptManager = scriptManager,
-            coroutineScope = scope,
-            prefix = "简单脚本"
-        ).register()
+        scriptModule.register()
 
         scope.launch {
             try {
                 ready = false
-                val scriptLoadSummary = scriptManager.load()
+                val scriptLoadSummary = scriptModule.load()
                 ready = true
                 if (scriptLoadSummary.failed.isEmpty()) {
                     logger.info("Scripts loaded: {}", scriptLoadSummary.loaded)
@@ -87,7 +77,7 @@ class SimpleScriptVelocity @Inject constructor(
 
         try {
             runBlocking {
-                withTimeout(shutdownTimeout) { scriptManager?.close() }
+                withTimeout(shutdownTimeout) { scriptModule?.close() }
             }
         } catch (exception: TimeoutCancellationException) {
             logger.error("Script shutdown timed out after {}", shutdownTimeout, exception)
@@ -99,7 +89,7 @@ class SimpleScriptVelocity @Inject constructor(
 
         scope?.cancel()
         scope = null
-        scriptManager = null
+        scriptModule = null
 
         logger.info("SimpleScript velocity disabled")
     }
