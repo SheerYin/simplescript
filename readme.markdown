@@ -232,21 +232,18 @@ onUnload {
 Velocity event example:
 
 ```kotlin
-import com.velocitypowered.api.event.Subscribe
+import com.velocitypowered.api.event.EventHandler
 import com.velocitypowered.api.event.connection.PostLoginEvent
 import net.kyori.adventure.text.Component
 
-val listener = object {
-    @Subscribe
-    fun onPostLogin(event: PostLoginEvent) {
-        event.player.sendMessage(Component.text("Welcome from script: $id"))
-    }
+val handler = EventHandler<PostLoginEvent> { event ->
+    event.player.sendMessage(Component.text("Welcome from script: $id"))
 }
 
-proxy.eventManager.register(simpleScriptVelocity, listener)
+proxy.eventManager.register(simpleScriptVelocity, PostLoginEvent::class.java, Short.MAX_VALUE, handler)
 
 onUnload {
-    proxy.eventManager.unregisterListener(simpleScriptVelocity, listener)
+    proxy.eventManager.unregister(simpleScriptVelocity, handler)
 }
 ```
 
