@@ -9,6 +9,7 @@ import kotlinx.coroutines.sync.withLock
 import me.yin.simplescript.SimpleScript
 import org.slf4j.Logger
 import java.nio.file.Files
+import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.script.experimental.api.ResultWithDiagnostics
@@ -38,7 +39,8 @@ class SimpleScriptManager(
     }
 
     suspend fun loadScript(scriptId: String): LoadResult = lifecycleMutex.withLock {
-        doLoadScript(scriptId)
+        val normalizedScriptId = normalizeScriptId(scriptId) ?: return@withLock LoadResult.NOT_FOUND
+        doLoadScript(normalizedScriptId)
     }
 
     suspend fun reloadScripts(): LoadSummary = lifecycleMutex.withLock {
@@ -47,11 +49,12 @@ class SimpleScriptManager(
     }
 
     suspend fun reloadScript(scriptId: String): ReloadResult = lifecycleMutex.withLock {
-        if (!doUnloadScript(scriptId)) {
+        val normalizedScriptId = normalizeScriptId(scriptId) ?: return@withLock ReloadResult.NOT_FOUND
+        if (!doUnloadScript(normalizedScriptId)) {
             return@withLock ReloadResult.NOT_LOADED
         }
 
-        when (doLoadScript(scriptId)) {
+        when (doLoadScript(normalizedScriptId)) {
             LoadResult.LOADED -> ReloadResult.RELOADED
             LoadResult.ALREADY_LOADED -> ReloadResult.ALREADY_LOADED
             LoadResult.NOT_FOUND -> ReloadResult.NOT_FOUND
@@ -65,7 +68,8 @@ class SimpleScriptManager(
     }
 
     suspend fun unloadScript(scriptId: String): Boolean = lifecycleMutex.withLock {
-        doUnloadScript(scriptId)
+        val normalizedScriptId = normalizeScriptId(scriptId) ?: return@withLock false
+        doUnloadScript(normalizedScriptId)
     }
 
     fun availableScriptIds(): List<String> {
@@ -108,7 +112,7 @@ class SimpleScriptManager(
         if (unloadCallbacksByScriptId.containsKey(scriptId)) {
             return LoadResult.ALREADY_LOADED
         }
-        val scriptPath = scriptDirectory.resolve("$scriptId.$SIMPLE_SCRIPT_EXTENSION")
+        val scriptPath = scriptPath(scriptId) ?: return LoadResult.NOT_FOUND
         if (!Files.isRegularFile(scriptPath)) {
             return LoadResult.NOT_FOUND
         }
@@ -141,11 +145,11 @@ class SimpleScriptManager(
     }
 
     private fun listScriptFiles(): List<Path> {
-        return Files.list(scriptDirectory).use { paths ->
+        return Files.walk(scriptDirectory).use { paths ->
             paths
                 .filter { path -> Files.isRegularFile(path) }
                 .filter { path -> path.fileName.toString().endsWith(".$SIMPLE_SCRIPT_EXTENSION") }
-                .sorted()
+                .sorted(compareBy { path -> scriptId(path) })
                 .toList()
         }
     }
@@ -198,7 +202,37 @@ class SimpleScriptManager(
     }
 
     private fun scriptId(scriptPath: Path): String {
-        return scriptPath.fileName.toString().removeSuffix(".$SIMPLE_SCRIPT_EXTENSION")
+        return scriptDirectory
+            .relativize(scriptPath)
+            .toString()
+            .replace('\\', '/')
+            .removeSuffix(".$SIMPLE_SCRIPT_EXTENSION")
+    }
+
+    private fun scriptPath(scriptId: String): Path? {
+        val normalizedScriptId = normalizeScriptId(scriptId) ?: return null
+        return scriptDirectory.resolve("$normalizedScriptId.$SIMPLE_SCRIPT_EXTENSION").normalize()
+    }
+
+    private fun normalizeScriptId(scriptId: String): String? {
+        val portableScriptId = scriptId.replace('\\', '/').trim('/')
+        if (portableScriptId.isEmpty()) {
+            return null
+        }
+
+        return try {
+            val relativePath = Path.of(portableScriptId).normalize()
+            if (relativePath.isAbsolute || relativePath.startsWith("..")) {
+                return null
+            }
+
+            relativePath
+                .toString()
+                .replace('\\', '/')
+                .takeIf { it.isNotEmpty() && it != "." }
+        } catch (exception: InvalidPathException) {
+            null
+        }
     }
 
     private fun logReports(reports: List<ScriptDiagnostic>) {

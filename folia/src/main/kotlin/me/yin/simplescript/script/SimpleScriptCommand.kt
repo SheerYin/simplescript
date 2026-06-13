@@ -67,7 +67,7 @@ class SimpleScriptCommand(
                     return@executes 1
                 }
                 .then(
-                    Commands.argument("id", StringArgumentType.word())
+                    Commands.argument("id", StringArgumentType.greedyString())
                         .suggests { _, builder ->
                             suggestLoadedSync(builder)
                             builder.buildFuture()
@@ -85,7 +85,7 @@ class SimpleScriptCommand(
             Commands.literal("load")
                 .requires { source -> hasPermission(source, permissionScriptLoad) }
                 .then(
-                    Commands.argument("id", StringArgumentType.word())
+                    Commands.argument("id", StringArgumentType.greedyString())
                         .suggests { _, builder -> suggestUnloadedAsync(builder) }
                         .executes { context ->
                             load(
@@ -100,7 +100,7 @@ class SimpleScriptCommand(
             Commands.literal("unload")
                 .requires { source -> hasPermission(source, permissionScriptUnload) }
                 .then(
-                    Commands.argument("id", StringArgumentType.word())
+                    Commands.argument("id", StringArgumentType.greedyString())
                         .suggests { _, builder ->
                             suggestLoadedSync(builder)
                             builder.buildFuture()
@@ -226,7 +226,7 @@ class SimpleScriptCommand(
     private fun suggestLoadedSync(builder: SuggestionsBuilder) {
         val remaining = builder.remainingLowerCase
         for (id in scriptManager.unloadCallbacksByScriptId.keys.sorted()) {
-            if (id.startsWith(remaining, ignoreCase = true)) {
+            if (id.contains(remaining, ignoreCase = true)) {
                 builder.suggest(id)
             }
         }
@@ -244,7 +244,7 @@ class SimpleScriptCommand(
                         .filter { it !in loaded }
                         .sorted()
                     for (id in unloaded) {
-                        if (id.startsWith(lowercasePrefix, ignoreCase = true)) {
+                        if (id.contains(lowercasePrefix, ignoreCase = true)) {
                             builder.suggest(id)
                         }
                     }

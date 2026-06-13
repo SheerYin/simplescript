@@ -68,7 +68,7 @@ class SimpleScriptCommand(
                     return@executes 1
                 }
                 .then(
-                    BrigadierCommand.requiredArgumentBuilder("id", StringArgumentType.word())
+                    BrigadierCommand.requiredArgumentBuilder("id", StringArgumentType.greedyString())
                         .suggests { _, builder ->
                             suggestLoadedSync(builder)
                             builder.buildFuture()
@@ -86,7 +86,7 @@ class SimpleScriptCommand(
             BrigadierCommand.literalArgumentBuilder("load")
                 .requires { source -> source.hasPermission(permissionScriptLoad) }
                 .then(
-                    BrigadierCommand.requiredArgumentBuilder("id", StringArgumentType.word())
+                    BrigadierCommand.requiredArgumentBuilder("id", StringArgumentType.greedyString())
                         .suggests { _, builder -> suggestUnloadedAsync(builder) }
                         .executes { context ->
                             load(
@@ -101,7 +101,7 @@ class SimpleScriptCommand(
             BrigadierCommand.literalArgumentBuilder("unload")
                 .requires { source -> source.hasPermission(permissionScriptUnload) }
                 .then(
-                    BrigadierCommand.requiredArgumentBuilder("id", StringArgumentType.word())
+                    BrigadierCommand.requiredArgumentBuilder("id", StringArgumentType.greedyString())
                         .suggests { _, builder ->
                             suggestLoadedSync(builder)
                             builder.buildFuture()
@@ -226,7 +226,7 @@ class SimpleScriptCommand(
     private fun suggestLoadedSync(builder: SuggestionsBuilder) {
         val remaining = builder.remainingLowerCase
         for (id in scriptManager.unloadCallbacksByScriptId.keys.sorted()) {
-            if (id.startsWith(remaining, ignoreCase = true)) {
+            if (id.contains(remaining, ignoreCase = true)) {
                 builder.suggest(id)
             }
         }
@@ -244,7 +244,7 @@ class SimpleScriptCommand(
                         .filter { it !in loaded }
                         .sorted()
                     for (id in unloaded) {
-                        if (id.startsWith(lowercasePrefix, ignoreCase = true)) {
+                        if (id.contains(lowercasePrefix, ignoreCase = true)) {
                             builder.suggest(id)
                         }
                     }
