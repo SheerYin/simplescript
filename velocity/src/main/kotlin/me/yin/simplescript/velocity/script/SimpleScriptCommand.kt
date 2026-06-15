@@ -148,12 +148,11 @@ class SimpleScriptCommand(
                     ReloadResult.NOT_LOADED -> source.sendMessage(prefixMessage().append(Component.text("Script not loaded: $scriptId", NamedTextColor.RED)))
                     ReloadResult.ALREADY_LOADED -> source.sendMessage(prefixMessage().append(Component.text("Script already loaded: $scriptId", NamedTextColor.RED)))
                     ReloadResult.NOT_FOUND -> source.sendMessage(prefixMessage().append(Component.text("Script file missing: $scriptId", NamedTextColor.RED)))
+                    ReloadResult.UNLOAD_FAILED -> source.sendMessage(prefixMessage().append(Component.text("Failed to unload script $scriptId; see console for details", NamedTextColor.RED)))
+                    ReloadResult.LOAD_FAILED -> source.sendMessage(prefixMessage().append(Component.text("Failed to load script $scriptId; see console for details", NamedTextColor.RED)))
                 }
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (exception: Exception) {
-                logger.error("Failed to reload script {}", scriptId, exception)
-                source.sendMessage(prefixMessage().append(Component.text("Failed to reload script $scriptId: ${exception.message ?: exception.javaClass.simpleName}", NamedTextColor.RED)))
             }
         }
     }
@@ -165,12 +164,10 @@ class SimpleScriptCommand(
                     LoadResult.LOADED -> source.sendMessage(prefixMessage("Loaded script $scriptId"))
                     LoadResult.ALREADY_LOADED -> source.sendMessage(prefixMessage().append(Component.text("Script already loaded: $scriptId", NamedTextColor.RED)))
                     LoadResult.NOT_FOUND -> source.sendMessage(prefixMessage().append(Component.text("Script not found: $scriptId", NamedTextColor.RED)))
+                    LoadResult.FAILED -> source.sendMessage(prefixMessage().append(Component.text("Failed to load script $scriptId; see console for details", NamedTextColor.RED)))
                 }
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (exception: Exception) {
-                logger.error("Failed to load script {}", scriptId, exception)
-                source.sendMessage(prefixMessage().append(Component.text("Failed to load script $scriptId: ${exception.message ?: exception.javaClass.simpleName}", NamedTextColor.RED)))
             }
         }
     }
@@ -178,17 +175,13 @@ class SimpleScriptCommand(
     private fun unload(source: CommandSource, scriptId: String) {
         coroutineScope.launch {
             try {
-                val unloaded = scriptManager.unloadScript(scriptId)
-                if (!unloaded) {
-                    source.sendMessage(prefixMessage().append(Component.text("Script not loaded: $scriptId", NamedTextColor.RED)))
-                    return@launch
+                when (scriptManager.unloadScript(scriptId)) {
+                    UnloadResult.UNLOADED -> source.sendMessage(prefixMessage("Unloaded script $scriptId"))
+                    UnloadResult.NOT_LOADED -> source.sendMessage(prefixMessage().append(Component.text("Script not loaded: $scriptId", NamedTextColor.RED)))
+                    UnloadResult.FAILED -> source.sendMessage(prefixMessage().append(Component.text("Failed to unload script $scriptId; see console for details", NamedTextColor.RED)))
                 }
-                source.sendMessage(prefixMessage("Unloaded script $scriptId"))
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (exception: Exception) {
-                logger.error("Failed to unload script {}", scriptId, exception)
-                source.sendMessage(prefixMessage().append(Component.text("Failed to unload script $scriptId: ${exception.message ?: exception.javaClass.simpleName}", NamedTextColor.RED)))
             }
         }
     }

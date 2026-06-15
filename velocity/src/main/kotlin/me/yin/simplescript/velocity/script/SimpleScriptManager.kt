@@ -1,6 +1,7 @@
 package me.yin.simplescript.velocity.script
 
 import com.velocitypowered.api.proxy.ProxyServer
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -53,14 +54,17 @@ class SimpleScriptManager(
 
     suspend fun reloadScript(scriptId: String): ReloadResult = lifecycleMutex.withLock {
         val normalizedScriptId = normalizeScriptId(scriptId) ?: return@withLock ReloadResult.NOT_FOUND
-        if (!doUnloadScript(normalizedScriptId)) {
-            return@withLock ReloadResult.NOT_LOADED
+        when (doUnloadScript(normalizedScriptId)) {
+            UnloadResult.UNLOADED -> Unit
+            UnloadResult.NOT_LOADED -> return@withLock ReloadResult.NOT_LOADED
+            UnloadResult.FAILED -> return@withLock ReloadResult.UNLOAD_FAILED
         }
 
         when (doLoadScript(normalizedScriptId)) {
             LoadResult.LOADED -> ReloadResult.RELOADED
             LoadResult.ALREADY_LOADED -> ReloadResult.ALREADY_LOADED
             LoadResult.NOT_FOUND -> ReloadResult.NOT_FOUND
+            LoadResult.FAILED -> ReloadResult.LOAD_FAILED
         }
     }
 
@@ -70,8 +74,8 @@ class SimpleScriptManager(
         }
     }
 
-    suspend fun unloadScript(scriptId: String): Boolean = lifecycleMutex.withLock {
-        val normalizedScriptId = normalizeScriptId(scriptId) ?: return@withLock false
+    suspend fun unloadScript(scriptId: String): UnloadResult = lifecycleMutex.withLock {
+        val normalizedScriptId = normalizeScriptId(scriptId) ?: return@withLock UnloadResult.NOT_LOADED
         doUnloadScript(normalizedScriptId)
     }
 
@@ -98,6 +102,8 @@ class SimpleScriptManager(
                 evaluateScript(scriptId, scriptPath)
                 loaded += 1
                 logger.info("Started script {} from {}", scriptId, scriptPath)
+            } catch (exception: CancellationException) {
+                throw exception
             } catch (exception: Exception) {
                 failed += scriptId
                 doUnloadScript(scriptId)
@@ -124,9 +130,12 @@ class SimpleScriptManager(
             evaluateScript(scriptId, scriptPath)
             logger.info("Started script {} from {}", scriptId, scriptPath)
             return LoadResult.LOADED
+        } catch (exception: CancellationException) {
+            throw exception
         } catch (exception: Exception) {
             doUnloadScript(scriptId)
-            throw exception
+            logger.error("Failed to start script {} from {}", scriptId, scriptPath, exception)
+            return LoadResult.FAILED
         }
     }
 
@@ -137,14 +146,17 @@ class SimpleScriptManager(
         }
     }
 
-    private suspend fun doUnloadScript(scriptId: String): Boolean {
-        val unloadCallback = unloadCallbacksByScriptId.remove(scriptId) ?: return false
+    private suspend fun doUnloadScript(scriptId: String): UnloadResult {
+        val unloadCallback = unloadCallbacksByScriptId.remove(scriptId) ?: return UnloadResult.NOT_LOADED
         try {
             unloadCallback()
+        } catch (exception: CancellationException) {
+            throw exception
         } catch (exception: Exception) {
             logger.error("Failed to unload script {}", scriptId, exception)
+            return UnloadResult.FAILED
         }
-        return true
+        return UnloadResult.UNLOADED
     }
 
     private fun listScriptFiles(): List<Path> {
@@ -183,6 +195,11 @@ class SimpleScriptManager(
 
         val result = try {
             scriptService.evaluate(scriptPath, scope)
+        } catch (exception: CancellationException) {
+            if (!unloadCallbacksByScriptId.containsKey(scriptId)) {
+                scriptCoroutineScope.cancel()
+            }
+            throw exception
         } catch (exception: Exception) {
             if (!unloadCallbacksByScriptId.containsKey(scriptId)) {
                 scriptCoroutineScope.cancel()
@@ -237,6 +254,7 @@ class SimpleScriptManager(
                 .replace('\\', '/')
                 .takeIf { it.isNotEmpty() && it != "." }
         } catch (exception: InvalidPathException) {
+            logger.warn("Rejected invalid script id: {}", scriptId, exception)
             null
         }
     }
@@ -265,14 +283,23 @@ class SimpleScriptManager(
 enum class LoadResult {
     LOADED,
     ALREADY_LOADED,
-    NOT_FOUND
+    NOT_FOUND,
+    FAILED
 }
 
 enum class ReloadResult {
     RELOADED,
     NOT_LOADED,
     ALREADY_LOADED,
-    NOT_FOUND
+    NOT_FOUND,
+    UNLOAD_FAILED,
+    LOAD_FAILED
+}
+
+enum class UnloadResult {
+    UNLOADED,
+    NOT_LOADED,
+    FAILED
 }
 
 data class LoadSummary(
