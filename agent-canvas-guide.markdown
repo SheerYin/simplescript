@@ -18,7 +18,6 @@
 - 正常运行时，修改或读取世界、实体、区块、区域绑定数据等游戏状态仍应回到对应调度器；玩家 `sendMessage`、title、actionbar 等单纯可见输出通常不需要因此切换调度器。如果输出内容依赖世界或实体状态，取数据那一步仍按对应归属处理。
 - 插件禁用、`onDisable()` 或服务器 stop 后，已排队任务会被取消/丢弃，新提交任务会抛出异常或无法可靠进入执行队列。延迟任务、协程 `delay` 后恢复、数据库/Redis/网络回调、`onUnload { ... }` 等异步完成后再调度，建议把“插件已经不可调度”作为自然分支处理。
 - 进入 `onDisable()`、插件已禁用或服务器 stop 后，通常已经处在禁用/卸载流程里，大部分保存或清理所需的现有数据可以直接从当前对象、模块缓存、脚本状态或 Bukkit 当前状态中读取，不宜为了“取一次数据”再新提交调度任务。
-- 本项目的 `SimpleScript.globalRegionScheduler { ... }` 是生命周期友好的包装：插件启用时投递到 global region scheduler，插件禁用或提交被拒绝时丢弃任务并返回 `false`。`SimpleScript.globalRegionSchedulerOrRun { ... }` 会在无法提交时直接执行 `block`，便于卸载流程继续清理当前状态。`SimpleScript.regionScheduler(...)` 和 `SimpleScript.entityScheduler(...)` 不暴露提交结果，插件禁用后会直接返回，不会执行新的区域/实体任务。
 
 ### 异步与阻塞
 
