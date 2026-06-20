@@ -13,6 +13,7 @@ import me.yin.simplescript.listener.AsyncPlayerPreLoginListener
 import me.yin.simplescript.script.SimpleScriptModule
 import org.bukkit.World
 import org.bukkit.entity.Entity
+import org.bukkit.plugin.IllegalPluginAccessException
 import org.bukkit.plugin.java.JavaPlugin
 import kotlin.time.Duration.Companion.seconds
 
@@ -85,21 +86,43 @@ class SimpleScript : JavaPlugin() {
         slF4JLogger.info("Disabled {} {}", prefix, pluginMeta.version)
     }
 
-    fun globalRegionScheduler(block: () -> Unit) {
+    fun globalRegionScheduler(block: () -> Unit): Boolean {
         if (!isEnabled) {
-            block()
-            return
+            return false
         }
-        server.globalRegionScheduler.execute(this) { block() }
+
+        return try {
+            server.globalRegionScheduler.execute(this) { block() }
+            true
+        } catch (_: IllegalPluginAccessException) {
+            false
+        }
+    }
+
+    fun globalRegionSchedulerOrRun(block: () -> Unit) {
+        val scheduled = globalRegionScheduler(block)
+        if (!scheduled) {
+            block()
+        }
     }
 
     fun regionScheduler(world: World, chunkX: Int, chunkZ: Int, block: () -> Unit) {
-        if (!isEnabled) return
+        if (!isEnabled) {
+            return
+        }
+
         server.regionScheduler.execute(this, world, chunkX, chunkZ) { block() }
     }
 
-    fun entityScheduler(entity: Entity, block: () -> Unit, retired: (() -> Unit)? = null) {
-        if (!isEnabled) return
+    fun entityScheduler(
+        entity: Entity,
+        block: () -> Unit,
+        retired: (() -> Unit)? = null,
+    ) {
+        if (!isEnabled) {
+            return
+        }
+
         entity.scheduler.execute(this, { block() }, retired, 1L)
     }
 }

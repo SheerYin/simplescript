@@ -26,17 +26,18 @@ Scripts run on the plugin classpath, so they can use the same APIs and bundled l
 - Connecting to PostgreSQL with JDBC or HikariCP.
 - Communicating with Redis through Lettuce.
 - Running background work with Kotlin coroutines through `context.scope`.
-- Scheduling Bukkit, Paper, and Canvas API access through `globalRegionScheduler`, `regionScheduler`, and `entityScheduler` on the Canvas side.
+- Scheduling Bukkit, Paper, and Canvas API access through `globalRegionScheduler`, `globalRegionSchedulerOrRun`, `regionScheduler`, and `entityScheduler` on the Canvas side.
 
 On the Canvas side, scripts are evaluated by SimpleScript and can schedule Bukkit, Paper, and Canvas API access through the plugin helpers:
 
 ```kotlin
 context.simpleScript.globalRegionScheduler { ... }
+context.simpleScript.globalRegionSchedulerOrRun { ... }
 context.simpleScript.regionScheduler(world, chunkX, chunkZ) { ... }
 context.simpleScript.entityScheduler(entity) { ... }
 ```
 
-These helpers are the recommended default because they keep scripts concise and centralize shutdown behavior. If a coroutine resumes after `delay`, or a `context.onUnload` cleanup runs while the plugin/server is shutting down, submitting a new task with a disabled plugin can throw. `globalRegionScheduler` runs `block()` immediately when the plugin is already disabled so global cleanup can still finish; region and entity tasks are discarded when they can no longer be scheduled safely. Scripts that need finer control over submission, dropping work, retired callbacks, exception handling, or exact thread semantics can still use the native Canvas schedulers directly.
+These helpers are the recommended default because they keep scripts concise and centralize shutdown behavior. If a coroutine resumes after `delay`, or a `context.onUnload` cleanup runs while the plugin/server is shutting down, submitting a new task with a disabled plugin can throw. `globalRegionScheduler` returns `true` when work was submitted to the scheduler and `false` when submission was rejected. `globalRegionScheduler` discards rejected tasks. `globalRegionSchedulerOrRun` runs `block()` immediately when scheduler submission is rejected so global cleanup can still finish. Region and entity tasks are discarded when the plugin is disabled or the scheduler rejects the submission. Scripts that need finer control over submission, dropping work, retired callbacks, exception handling, or exact thread semantics can still use the native Canvas schedulers directly.
 
 `context.onUnload { ... }` still runs while the plugin is being disabled. Synchronous cleanup such as unregistering listeners, removing command nodes, closing files, closing database connections, closing Redis clients, or cancelling coroutine jobs can still run. For Bukkit, Paper, or Canvas scheduled work, scripts can call the plugin scheduler helpers directly.
 
@@ -118,7 +119,7 @@ context.simpleScript.globalRegionScheduler {
 }
 
 context.onUnload {
-    context.simpleScript.globalRegionScheduler {
+    context.simpleScript.globalRegionSchedulerOrRun {
         context.logger.info("cleanup canvas script {}", context.scriptId)
     }
 }
@@ -170,7 +171,7 @@ context.simpleScript.globalRegionScheduler {
 }
 
 context.onUnload {
-    context.simpleScript.globalRegionScheduler {
+    context.simpleScript.globalRegionSchedulerOrRun {
         root.removeCommand(commandName)
         refreshCommands()
     }
@@ -223,7 +224,7 @@ context.simpleScript.globalRegionScheduler {
 }
 
 context.onUnload {
-    context.simpleScript.globalRegionScheduler {
+    context.simpleScript.globalRegionSchedulerOrRun {
         PlayerJoinEvent.getHandlerList().unregister(listener)
     }
 }
