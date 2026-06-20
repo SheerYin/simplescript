@@ -2,7 +2,7 @@
 
 > This file is intended for human readers only. AI agents should not use this file as project guidance. For collaboration guidance, use `agent-guide.markdown`, the latest user instructions, and the current project state.
 
-SimpleScript is a Kotlin scripting plugin project for Minecraft servers. It provides script loading, unloading, reloading, and listing commands for Paper/Folia and Velocity.
+SimpleScript is a Kotlin scripting plugin project for Minecraft servers. It provides script loading, unloading, reloading, and listing commands for Canvas and Velocity.
 
 ## Features
 
@@ -18,17 +18,17 @@ SimpleScript is a Kotlin scripting plugin project for Minecraft servers. It prov
 
 Scripts run on the plugin classpath, so they can use the same APIs and bundled libraries as the plugin. Typical use cases include:
 
-- Dynamically registering and unregistering Paper/Folia or Velocity commands.
-- Registering and unregistering Paper/Folia or Velocity event listeners.
+- Dynamically registering and unregistering Canvas or Velocity commands.
+- Registering and unregistering Canvas or Velocity event listeners.
 - Sending Adventure `Component` messages to players and command sources.
 - Reading and writing JSON with kotlinx.serialization.
 - Storing local data with SQLite.
 - Connecting to PostgreSQL with JDBC or HikariCP.
 - Communicating with Redis through Lettuce.
 - Running background work with Kotlin coroutines through `scriptCoroutineScope`.
-- Scheduling Bukkit, Paper, and Folia API access through `globalRegionScheduler`, `regionScheduler`, and `entityScheduler` on the Folia/Paper side.
+- Scheduling Bukkit, Paper, and Canvas API access through `globalRegionScheduler`, `regionScheduler`, and `entityScheduler` on the Canvas side.
 
-On the Folia/Paper side, scripts are evaluated by SimpleScript and can schedule Bukkit, Paper, and Folia API access through the plugin helpers:
+On the Canvas side, scripts are evaluated by SimpleScript and can schedule Bukkit, Paper, and Canvas API access through the plugin helpers:
 
 ```kotlin
 plugin.globalRegionScheduler { ... }
@@ -36,9 +36,9 @@ plugin.regionScheduler(world, chunkX, chunkZ) { ... }
 plugin.entityScheduler(entity) { ... }
 ```
 
-These helpers are the recommended default because they keep scripts concise and centralize shutdown behavior. If a coroutine resumes after `delay`, or an `onUnload` cleanup runs while the plugin/server is shutting down, submitting a new task with a disabled plugin can throw. `globalRegionScheduler` runs `block()` immediately when the plugin is already disabled so global cleanup can still finish; region and entity tasks are discarded when they can no longer be scheduled safely. Scripts that need finer control over submission, dropping work, retired callbacks, exception handling, or exact thread semantics can still use the native Folia/Paper schedulers directly.
+These helpers are the recommended default because they keep scripts concise and centralize shutdown behavior. If a coroutine resumes after `delay`, or an `onUnload` cleanup runs while the plugin/server is shutting down, submitting a new task with a disabled plugin can throw. `globalRegionScheduler` runs `block()` immediately when the plugin is already disabled so global cleanup can still finish; region and entity tasks are discarded when they can no longer be scheduled safely. Scripts that need finer control over submission, dropping work, retired callbacks, exception handling, or exact thread semantics can still use the native Canvas schedulers directly.
 
-`onUnload { ... }` still runs while the plugin is being disabled. Synchronous cleanup such as unregistering listeners, removing command nodes, closing files, closing database connections, closing Redis clients, or cancelling coroutine jobs can still run. For Bukkit, Paper, or Folia scheduled work, scripts can call the plugin scheduler helpers directly.
+`onUnload { ... }` still runs while the plugin is being disabled. Synchronous cleanup such as unregistering listeners, removing command nodes, closing files, closing database connections, closing Redis clients, or cancelling coroutine jobs can still run. For Bukkit, Paper, or Canvas scheduled work, scripts can call the plugin scheduler helpers directly.
 
 Scripts should clean up anything they register or open by using `onUnload { ... }`. Each script may register at most one unload callback; if a script does not register one, SimpleScript still tracks it and cancels its `scriptCoroutineScope` on unload.
 
@@ -58,7 +58,7 @@ scripts/example.kts -> example
 
 ## Commands
 
-Folia/Paper:
+Canvas:
 
 ```text
 /simplescript reload
@@ -105,7 +105,7 @@ onUnload {
 }
 ```
 
-Folia/Paper script example:
+Canvas script example:
 
 ```kotlin
 import net.kyori.adventure.text.Component
@@ -119,7 +119,7 @@ plugin.globalRegionScheduler {
 
 onUnload {
     plugin.globalRegionScheduler {
-        plugin.slF4JLogger.info("cleanup folia script {}", id)
+        plugin.slF4JLogger.info("cleanup canvas script {}", id)
     }
 }
 ```
@@ -138,7 +138,7 @@ onUnload {
 }
 ```
 
-Folia/Paper command example:
+Canvas command example:
 
 ```kotlin
 import io.papermc.paper.command.brigadier.ApiMirrorRootNode
@@ -203,7 +203,7 @@ onUnload {
 }
 ```
 
-Folia/Paper event example:
+Canvas event example:
 
 ```kotlin
 import net.kyori.adventure.text.Component
@@ -264,10 +264,10 @@ Linux/macOS:
 ## Artifacts
 
 ```text
-folia/build/libs/SimpleScript-folia-shadow.jar
+canvas/build/libs/SimpleScript-canvas-shadow.jar
 velocity/build/libs/SimpleScript-velocity-shadow.jar
 ```
 
 ## Notes
 
-This project uses Kotlin, Gradle, Shadow, paperweight userdev, the Paper/Folia API, and the Velocity API. Configuration, dependencies, and API usage should be checked against the current source code.
+This project uses Kotlin, Gradle, Shadow, Canvas Weaver userdev, the Canvas/Paper API, and the Velocity API. Configuration, dependencies, and API usage should be checked against the current source code.
