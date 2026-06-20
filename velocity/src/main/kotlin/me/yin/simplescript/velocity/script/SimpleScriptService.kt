@@ -1,9 +1,6 @@
 package me.yin.simplescript.velocity.script
 
-import com.velocitypowered.api.proxy.ProxyServer
-import kotlinx.coroutines.CoroutineScope
 import me.yin.simplescript.velocity.SimpleScriptVelocity
-import org.slf4j.Logger
 import java.nio.file.Path
 import kotlin.script.experimental.annotations.KotlinScript
 import kotlin.script.experimental.api.EvaluationResult
@@ -24,7 +21,7 @@ class SimpleScriptService(
     private val simpleScriptVelocity: SimpleScriptVelocity
 ) {
     private val scriptingHost = BasicJvmScriptingHost()
-    private val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<SimpleScriptFile> {
+    private val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<SimpleScriptTemplate> {
         jvm {
             dependenciesFromClassloader(
                 classLoader = simpleScriptVelocity.javaClass.classLoader,
@@ -33,9 +30,9 @@ class SimpleScriptService(
         }
     }
 
-    fun evaluate(scriptPath: Path, scope: SimpleScriptScope): ResultWithDiagnostics<EvaluationResult> {
+    fun evaluate(scriptPath: Path, context: SimpleScriptContext): ResultWithDiagnostics<EvaluationResult> {
         val evaluationConfiguration = ScriptEvaluationConfiguration {
-            constructorArgs(scope)
+            constructorArgs(context)
 
             jvm {
                 baseClassLoader(simpleScriptVelocity.javaClass.classLoader)
@@ -54,30 +51,8 @@ class SimpleScriptService(
     fileExtension = SIMPLE_SCRIPT_EXTENSION,
     compilationConfiguration = SimpleScriptCompilationConfiguration::class
 )
-abstract class SimpleScriptFile(
-    private val scope: SimpleScriptScope
-) {
-    val id: String
-        get() = scope.id
-
-    val simpleScriptVelocity: SimpleScriptVelocity
-        get() = scope.simpleScriptVelocity
-
-    val proxy: ProxyServer
-        get() = scope.proxy
-
-    val dataDirectory: Path
-        get() = scope.dataDirectory
-
-    val logger: Logger
-        get() = scope.logger
-
-    val scriptCoroutineScope: CoroutineScope
-        get() = scope.scriptCoroutineScope
-
-    fun onUnload(block: suspend () -> Unit) {
-        scope.onUnload(block)
-    }
-}
+abstract class SimpleScriptTemplate(
+    val context: SimpleScriptContext
+)
 
 object SimpleScriptCompilationConfiguration : ScriptCompilationConfiguration({})

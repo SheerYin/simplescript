@@ -7,25 +7,25 @@ import kotlinx.coroutines.cancel
 import me.yin.simplescript.SimpleScript
 
 class SimpleScriptModule(
-    private val plugin: SimpleScript,
+    private val simpleScript: SimpleScript,
     parentCoroutineScope: CoroutineScope
 ) {
-    val prefix: String = plugin.pluginMeta.loggerPrefix ?: plugin.pluginMeta.name
+    val prefix: String = simpleScript.pluginMeta.loggerPrefix ?: simpleScript.pluginMeta.name
 
     private val parentJob = parentCoroutineScope.coroutineContext[Job]
     private val coroutineScope = CoroutineScope(parentCoroutineScope.coroutineContext + SupervisorJob(parentJob))
 
-    val scriptService: SimpleScriptService = SimpleScriptService(plugin)
+    val scriptService: SimpleScriptService = SimpleScriptService(simpleScript)
 
     val scriptManager: SimpleScriptManager = SimpleScriptManager(
-        plugin = plugin,
+        simpleScript = simpleScript,
         scriptService = scriptService,
         coroutineScope = coroutineScope,
-        logger = plugin.slF4JLogger
+        logger = simpleScript.slF4JLogger
     )
 
     val command: SimpleScriptCommand = SimpleScriptCommand(
-        plugin = plugin,
+        simpleScript = simpleScript,
         scriptManager = scriptManager,
         coroutineScope = coroutineScope,
         prefix = prefix

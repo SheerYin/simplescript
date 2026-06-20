@@ -1,6 +1,5 @@
 package me.yin.simplescript.script
 
-import kotlinx.coroutines.CoroutineScope
 import me.yin.simplescript.SimpleScript
 import java.nio.file.Path
 import kotlin.script.experimental.annotations.KotlinScript
@@ -19,24 +18,24 @@ import kotlin.script.experimental.host.toScriptSource
 const val SIMPLE_SCRIPT_EXTENSION = "kts"
 
 class SimpleScriptService(
-    private val plugin: SimpleScript
+    private val simpleScript: SimpleScript
 ) {
     private val scriptingHost = BasicJvmScriptingHost()
-    private val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<SimpleScriptFile> {
+    private val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<SimpleScriptTemplate> {
         jvm {
             dependenciesFromClassloader(
-                classLoader = plugin.javaClass.classLoader,
+                classLoader = simpleScript.javaClass.classLoader,
                 wholeClasspath = true
             )
         }
     }
 
-    fun evaluate(scriptPath: Path, scope: SimpleScriptScope): ResultWithDiagnostics<EvaluationResult> {
+    fun evaluate(scriptPath: Path, context: SimpleScriptContext): ResultWithDiagnostics<EvaluationResult> {
         val evaluationConfiguration = ScriptEvaluationConfiguration {
-            constructorArgs(scope)
+            constructorArgs(context)
 
             jvm {
-                baseClassLoader(plugin.javaClass.classLoader)
+                baseClassLoader(simpleScript.javaClass.classLoader)
             }
         }
 
@@ -52,21 +51,8 @@ class SimpleScriptService(
     fileExtension = SIMPLE_SCRIPT_EXTENSION,
     compilationConfiguration = SimpleScriptCompilationConfiguration::class
 )
-abstract class SimpleScriptFile(
-    private val scope: SimpleScriptScope
-) {
-    val id: String
-        get() = scope.id
-
-    val plugin: SimpleScript
-        get() = scope.plugin
-
-    val scriptCoroutineScope: CoroutineScope
-        get() = scope.scriptCoroutineScope
-
-    fun onUnload(block: suspend () -> Unit) {
-        scope.onUnload(block)
-    }
-}
+abstract class SimpleScriptTemplate(
+    val context: SimpleScriptContext
+)
 
 object SimpleScriptCompilationConfiguration : ScriptCompilationConfiguration({})

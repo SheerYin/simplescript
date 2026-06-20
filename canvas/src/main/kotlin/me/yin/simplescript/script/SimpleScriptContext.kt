@@ -2,14 +2,16 @@ package me.yin.simplescript.script
 
 import kotlinx.coroutines.CoroutineScope
 import me.yin.simplescript.SimpleScript
+import org.slf4j.Logger
 
-class SimpleScriptScope(
-    val id: String,
-    val plugin: SimpleScript,
-    val scriptCoroutineScope: CoroutineScope,
+class SimpleScriptContext(
+    val scriptId: String,
+    val simpleScript: SimpleScript,
+    val logger: Logger,
+    val scope: CoroutineScope,
     private val registerUnloadCallback: (String, suspend () -> Unit) -> Unit
 ) {
     fun onUnload(block: suspend () -> Unit) {
-        registerUnloadCallback(id, block)
+        registerUnloadCallback(scriptId, block)
     }
 }

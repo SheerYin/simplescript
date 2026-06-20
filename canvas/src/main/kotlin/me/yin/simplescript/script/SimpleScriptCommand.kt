@@ -20,7 +20,7 @@ import org.bukkit.entity.Player
 import java.util.concurrent.CompletableFuture
 
 class SimpleScriptCommand(
-    private val plugin: SimpleScript,
+    private val simpleScript: SimpleScript,
     private val scriptManager: SimpleScriptManager,
     private val coroutineScope: CoroutineScope,
     private val prefix: String
@@ -44,7 +44,7 @@ class SimpleScriptCommand(
     var permissionScriptList = "simplescript.command.list"
 
     fun register() {
-        plugin.lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
+        simpleScript.lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
             event.registrar().register(
                 rootCommand(),
                 "SimpleScript commands",
@@ -127,14 +127,14 @@ class SimpleScriptCommand(
     private fun reload(sender: CommandSender) {
         coroutineScope.launch {
             try {
-                plugin.ready = false
+                simpleScript.ready = false
                 val summary = scriptManager.reloadScripts()
-                plugin.ready = true
+                simpleScript.ready = true
                 sendLoadSummary(sender, "Reloaded", summary)
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
-                plugin.slF4JLogger.error("Failed to reload scripts", exception)
+                simpleScript.slF4JLogger.error("Failed to reload scripts", exception)
                 sender.sendMessage(prefixMessage().append(Component.text("Failed to reload scripts: ${exception.message ?: exception.javaClass.simpleName}", NamedTextColor.RED)))
             }
         }
@@ -245,7 +245,7 @@ class SimpleScriptCommand(
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
-                plugin.slF4JLogger.warn("Failed to suggest unloaded scripts for prefix {}", prefix, exception)
+                simpleScript.slF4JLogger.warn("Failed to suggest unloaded scripts for prefix {}", prefix, exception)
             }
 
             builder.build()

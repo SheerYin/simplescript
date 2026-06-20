@@ -8,11 +8,11 @@ import org.bukkit.event.Listener
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent
 
 class AsyncPlayerPreLoginListener(
-    private val plugin: SimpleScript
+    private val simpleScript: SimpleScript
 ) : Listener {
     @EventHandler
     fun onAsyncPlayerPreLogin(event: AsyncPlayerPreLoginEvent) {
-        if (plugin.ready) {
+        if (simpleScript.ready) {
             return
         }
 

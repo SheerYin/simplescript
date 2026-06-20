@@ -6,16 +6,16 @@ import me.yin.simplescript.velocity.SimpleScriptVelocity
 import org.slf4j.Logger
 import java.nio.file.Path
 
-class SimpleScriptScope(
-    val id: String,
+class SimpleScriptContext(
+    val scriptId: String,
     val simpleScriptVelocity: SimpleScriptVelocity,
     val proxy: ProxyServer,
     val dataDirectory: Path,
     val logger: Logger,
-    val scriptCoroutineScope: CoroutineScope,
+    val scope: CoroutineScope,
     private val registerUnloadCallback: (String, suspend () -> Unit) -> Unit
 ) {
     fun onUnload(block: suspend () -> Unit) {
-        registerUnloadCallback(id, block)
+        registerUnloadCallback(scriptId, block)
     }
 }

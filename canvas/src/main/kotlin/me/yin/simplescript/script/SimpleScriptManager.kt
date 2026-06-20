@@ -16,15 +16,15 @@ import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.ScriptDiagnostic
 
 class SimpleScriptManager(
-    private val plugin: SimpleScript,
+    private val simpleScript: SimpleScript,
     private val scriptService: SimpleScriptService,
     private val coroutineScope: CoroutineScope,
     private val logger: Logger
 ) {
-    val scriptDirectory: Path = plugin.dataPath.resolve("scripts").normalize()
+    val scriptDirectory: Path = simpleScript.dataPath.resolve("scripts").normalize()
 
     private val lifecycleMutex = Mutex()
-    private val scriptFiles = ScriptFiles(scriptDirectory, logger)
+    private val scriptDirectoryAccess = ScriptDirectory(scriptDirectory, logger)
     val unloadCallbacksByScriptId = ConcurrentHashMap<String, suspend () -> Unit>()
 
     suspend fun load(): LoadSummary {
@@ -40,7 +40,7 @@ class SimpleScriptManager(
     }
 
     suspend fun loadScript(scriptId: String): LoadResult = lifecycleMutex.withLock {
-        val script = scriptFiles.resolveScriptInfo(scriptId) ?: return@withLock LoadResult.NOT_FOUND
+        val script = scriptDirectoryAccess.resolveScriptFile(scriptId) ?: return@withLock LoadResult.NOT_FOUND
         doLoadScript(script)
     }
 
@@ -50,7 +50,7 @@ class SimpleScriptManager(
     }
 
     suspend fun reloadScript(scriptId: String): ReloadResult = lifecycleMutex.withLock {
-        val script = scriptFiles.resolveScriptInfo(scriptId) ?: return@withLock ReloadResult.NOT_FOUND
+        val script = scriptDirectoryAccess.resolveScriptFile(scriptId) ?: return@withLock ReloadResult.NOT_FOUND
         when (doUnloadScript(script.id)) {
             UnloadResult.UNLOADED -> Unit
             UnloadResult.NOT_LOADED -> return@withLock ReloadResult.NOT_LOADED
@@ -72,7 +72,7 @@ class SimpleScriptManager(
     }
 
     suspend fun unloadScript(scriptId: String): UnloadResult = lifecycleMutex.withLock {
-        val script = scriptFiles.resolveScriptInfo(scriptId) ?: return@withLock UnloadResult.NOT_LOADED
+        val script = scriptDirectoryAccess.resolveScriptFile(scriptId) ?: return@withLock UnloadResult.NOT_LOADED
         doUnloadScript(script.id)
     }
 
@@ -80,13 +80,13 @@ class SimpleScriptManager(
         if (!Files.isDirectory(scriptDirectory)) {
             return emptyList()
         }
-        return scriptFiles.list().map { it.id }
+        return scriptDirectoryAccess.list().map { it.id }
     }
 
     private suspend fun doLoadScripts(): LoadSummary {
         Files.createDirectories(scriptDirectory)
 
-        val scripts = scriptFiles.list()
+        val scripts = scriptDirectoryAccess.list()
         var loaded = 0
         val failed = mutableListOf<String>()
         for (script in scripts) {
@@ -112,7 +112,7 @@ class SimpleScriptManager(
         )
     }
 
-    private suspend fun doLoadScript(script: ScriptInfo): LoadResult {
+    private suspend fun doLoadScript(script: ScriptFile): LoadResult {
         if (unloadCallbacksByScriptId.containsKey(script.id)) {
             return LoadResult.ALREADY_LOADED
         }
@@ -153,13 +153,14 @@ class SimpleScriptManager(
         return UnloadResult.UNLOADED
     }
 
-    private fun evaluateScript(script: ScriptInfo) {
+    private fun evaluateScript(script: ScriptFile) {
         val parentJob = coroutineScope.coroutineContext[Job]
         val scriptCoroutineScope = CoroutineScope(coroutineScope.coroutineContext + SupervisorJob(parentJob))
-        val scope = SimpleScriptScope(
-            id = script.id,
-            plugin = plugin,
-            scriptCoroutineScope = scriptCoroutineScope,
+        val context = SimpleScriptContext(
+            scriptId = script.id,
+            simpleScript = simpleScript,
+            logger = logger,
+            scope = scriptCoroutineScope,
             registerUnloadCallback = { id, block ->
                 val unloadCallback: suspend () -> Unit = {
                     try {
@@ -175,7 +176,7 @@ class SimpleScriptManager(
         )
 
         val result = try {
-            scriptService.evaluate(script.path, scope)
+            scriptService.evaluate(script.path, context)
         } catch (exception: CancellationException) {
             if (!unloadCallbacksByScriptId.containsKey(script.id)) {
                 scriptCoroutineScope.cancel()
@@ -223,42 +224,42 @@ class SimpleScriptManager(
 
 }
 
-private data class ScriptInfo(
+private data class ScriptFile(
     val id: String,
     val path: Path
 )
 
-private class ScriptFiles(
+private class ScriptDirectory(
     private val scriptDirectory: Path,
     private val logger: Logger
 ) {
     private val scriptIdPattern = Regex("""[\p{L}\p{N}_.-]+(?:/[\p{L}\p{N}_.-]+)*""")
 
-    fun list(): List<ScriptInfo> {
+    fun list(): List<ScriptFile> {
         return Files.walk(scriptDirectory).use { paths ->
             paths
                 .iterator()
                 .asSequence()
                 .filter { path -> Files.isRegularFile(path) }
                 .filter { path -> path.fileName.toString().endsWith(".$SIMPLE_SCRIPT_EXTENSION") }
-                .mapNotNull { path -> createScriptInfo(path) }
+                .mapNotNull { path -> createScriptFile(path) }
                 .sortedBy { script -> script.id }
                 .toList()
         }
     }
 
-    fun resolveScriptInfo(scriptId: String): ScriptInfo? {
+    fun resolveScriptFile(scriptId: String): ScriptFile? {
         if (!isValidScriptId(scriptId)) {
             return null
         }
 
-        return ScriptInfo(
+        return ScriptFile(
             id = scriptId,
             path = scriptDirectory.resolve("$scriptId.$SIMPLE_SCRIPT_EXTENSION")
         )
     }
 
-    private fun createScriptInfo(scriptPath: Path): ScriptInfo? {
+    private fun createScriptFile(scriptPath: Path): ScriptFile? {
         val scriptId = scriptDirectory
             .relativize(scriptPath)
             .joinToString("/") { path -> path.toString() }
@@ -269,7 +270,7 @@ private class ScriptFiles(
             return null
         }
 
-        return ScriptInfo(
+        return ScriptFile(
             id = scriptId,
             path = scriptPath
         )
