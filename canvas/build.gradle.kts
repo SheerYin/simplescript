@@ -19,6 +19,12 @@ version = "1.0.0-SNAPSHOT"
 
 kotlin {
     jvmToolchain(25)
+
+    sourceSets {
+        main {
+            kotlin.srcDir("src/main/resources/scripts")
+        }
+    }
 }
 
 repositories {
@@ -92,6 +98,12 @@ val generatePaperLibraries by tasks.registering {
 
 tasks.processResources {
     from(generatePaperLibraries)
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        freeCompilerArgs.add("-Xuse-fir-lt=false")
+    }
 }
 
 tasks.jar {
