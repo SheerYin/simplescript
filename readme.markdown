@@ -6,7 +6,7 @@ SimpleScript is a Kotlin scripting plugin project for Minecraft servers. It prov
 
 ## Features
 
-- Loads `.kts` scripts from the plugin data directory's `scripts` folder on startup.
+- Loads `.kts` scripts from the plugin data directory's `script/main` folder on startup.
 - Supports loading, unloading, reloading, and listing scripts through commands.
 - Lets scripts register suspend cleanup callbacks with `onUnload { ... }`.
 - Gives each script context its own `scope`, which is cancelled after unload cleanup finishes.
@@ -45,17 +45,26 @@ Scripts should clean up anything they register or open by using `context.onUnloa
 
 ## Script Directory
 
-Place script files under the plugin data directory:
+Place auto-loaded script files under the plugin data directory:
 
 ```text
-plugins/SimpleScript/scripts/*.kts
+plugins/SimpleScript/script/main/**/*.kts
 ```
 
-The script id is the file name without the `.kts` suffix. For example:
+The script id is the relative path from `script/main` without the `.kts` suffix. For example:
 
 ```text
-scripts/example.kts -> example
+script/main/example.kts -> example
+script/main/economy/shop.kts -> economy/shop
 ```
+
+Code outside `script/main` is not auto-loaded. Entry scripts can import other files explicitly with `@file:Import`:
+
+```kotlin
+@file:Import("../library/text.kts")
+```
+
+`@file:Import` and `@file:CompilerOptions` are handled by SimpleScript's scripting host before each script is compiled. `Import` paths are resolved relative to the current script file.
 
 ## Commands
 

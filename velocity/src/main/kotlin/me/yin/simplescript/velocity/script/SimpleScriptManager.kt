@@ -24,10 +24,10 @@ class SimpleScriptManager(
     private val coroutineScope: CoroutineScope,
     private val logger: Logger
 ) {
-    val scriptDirectory: Path = dataDirectory.resolve("scripts").normalize()
+    val scriptDirectoryPath: Path = dataDirectory.resolve("script/main").normalize()
 
     private val lifecycleMutex = Mutex()
-    private val scriptDirectoryAccess = ScriptDirectory(scriptDirectory, logger)
+    val scriptDirectoryAccess = ScriptDirectory(scriptDirectoryPath, logger)
     val unloadCallbacksByScriptId = ConcurrentHashMap<String, suspend () -> Unit>()
 
     suspend fun load(): LoadSummary {
@@ -80,14 +80,14 @@ class SimpleScriptManager(
     }
 
     fun availableScriptIds(): List<String> {
-        if (!Files.isDirectory(scriptDirectory)) {
+        if (!Files.isDirectory(scriptDirectoryAccess.directory)) {
             return emptyList()
         }
         return scriptDirectoryAccess.list().map { it.id }
     }
 
     private suspend fun doLoadScripts(): LoadSummary {
-        Files.createDirectories(scriptDirectory)
+        Files.createDirectories(scriptDirectoryAccess.directory)
 
         val scripts = scriptDirectoryAccess.list()
         var loaded = 0
@@ -229,19 +229,19 @@ class SimpleScriptManager(
 
 }
 
-private data class ScriptFile(
+data class ScriptFile(
     val id: String,
     val path: Path
 )
 
-private class ScriptDirectory(
-    private val scriptDirectory: Path,
+class ScriptDirectory(
+    val directory: Path,
     private val logger: Logger
 ) {
     private val scriptIdPattern = Regex("""[\p{L}\p{N}_.-]+(?:/[\p{L}\p{N}_.-]+)*""")
 
     fun list(): List<ScriptFile> {
-        return Files.walk(scriptDirectory).use { paths ->
+        return Files.walk(directory).use { paths ->
             paths
                 .iterator()
                 .asSequence()
@@ -260,12 +260,12 @@ private class ScriptDirectory(
 
         return ScriptFile(
             id = scriptId,
-            path = scriptDirectory.resolve("$scriptId.$SIMPLE_SCRIPT_EXTENSION")
+            path = directory.resolve("$scriptId.$SIMPLE_SCRIPT_EXTENSION")
         )
     }
 
     private fun createScriptFile(scriptPath: Path): ScriptFile? {
-        val scriptId = scriptDirectory
+        val scriptId = directory
             .relativize(scriptPath)
             .joinToString("/") { path -> path.toString() }
             .removeSuffix(".$SIMPLE_SCRIPT_EXTENSION")

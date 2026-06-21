@@ -8,24 +8,41 @@ import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.ScriptCompilationConfiguration
 import kotlin.script.experimental.api.ScriptEvaluationConfiguration
 import kotlin.script.experimental.api.constructorArgs
+import kotlin.script.experimental.api.defaultImports
+import kotlin.script.experimental.api.refineConfiguration
+import kotlin.script.experimental.host.toScriptSource
 import kotlin.script.experimental.jvm.baseClassLoader
 import kotlin.script.experimental.jvm.dependenciesFromClassloader
 import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
 import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromTemplate
-import kotlin.script.experimental.host.toScriptSource
 
 const val SIMPLE_SCRIPT_EXTENSION = "kts"
 
 class SimpleScriptService(
     private val simpleScript: SimpleScript
 ) {
+    private val pluginClassLoader = simpleScript.javaClass.classLoader
+    private val configurator = SimpleScriptConfigurator(simpleScript.slF4JLogger)
     private val scriptingHost = BasicJvmScriptingHost()
     private val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<SimpleScriptTemplate> {
+        defaultImports(
+            Import::class,
+            CompilerOptions::class
+        )
+
         jvm {
             dependenciesFromClassloader(
-                classLoader = simpleScript.javaClass.classLoader,
+                classLoader = pluginClassLoader,
                 wholeClasspath = true
+            )
+        }
+
+        refineConfiguration {
+            onAnnotations(
+                Import::class,
+                CompilerOptions::class,
+                handler = configurator::configure
             )
         }
     }
@@ -35,7 +52,7 @@ class SimpleScriptService(
             constructorArgs(context)
 
             jvm {
-                baseClassLoader(simpleScript.javaClass.classLoader)
+                baseClassLoader(pluginClassLoader)
             }
         }
 
