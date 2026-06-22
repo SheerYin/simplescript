@@ -45,10 +45,10 @@ Scripts should clean up anything they register or open by using `context.onUnloa
 
 ## Script Directory
 
-Place auto-loaded script files under the plugin data directory:
+Place auto-loaded script files under the plugin data directory's `script/main` folder:
 
 ```text
-plugins/SimpleScript/script/main/**/*.kts
+<plugin data directory>/script/main/**/*.kts
 ```
 
 The script id is the relative path from `script/main` without the `.kts` suffix. For example:
@@ -61,7 +61,7 @@ script/main/economy/shop.kts -> economy/shop
 Code outside `script/main` is not auto-loaded. Entry scripts can import other files explicitly with `@file:Import`:
 
 ```kotlin
-@file:Import("../library/text.kts")
+@file:Import("../common/test-common.kts")
 ```
 
 `@file:Import` and `@file:CompilerOptions` are handled by SimpleScript's scripting host before each script is compiled. `Import` paths are resolved relative to the current script file.
