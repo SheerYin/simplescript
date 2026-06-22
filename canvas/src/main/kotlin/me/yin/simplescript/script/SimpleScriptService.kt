@@ -1,13 +1,9 @@
 package me.yin.simplescript.script
 
 import me.yin.simplescript.SimpleScript
-import java.io.File
-import java.net.URL
-import java.net.URLClassLoader
 import java.nio.file.Path
 import kotlin.script.experimental.annotations.KotlinScript
 import kotlin.script.experimental.api.EvaluationResult
-import kotlin.script.experimental.api.KotlinType
 import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.ScriptCompilationConfiguration
 import kotlin.script.experimental.api.ScriptEvaluationConfiguration
@@ -15,19 +11,14 @@ import kotlin.script.experimental.api.constructorArgs
 import kotlin.script.experimental.api.defaultImports
 import kotlin.script.experimental.api.refineConfiguration
 import kotlin.script.experimental.host.ScriptingHostConfiguration
-import kotlin.script.experimental.host.configurationDependencies
-import kotlin.script.experimental.host.getScriptingClass
 import kotlin.script.experimental.host.toScriptSource
-import kotlin.script.experimental.jvm.GetScriptingClassByClassLoader
-import kotlin.script.experimental.jvm.JvmDependency
-import kotlin.script.experimental.jvm.JvmGetScriptingClass
 import kotlin.script.experimental.jvm.baseClassLoader
 import kotlin.script.experimental.jvm.dependenciesFromClassloader
 import kotlin.script.experimental.jvm.jvm
-import kotlin.script.experimental.jvm.updateClasspath
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
+import kotlin.script.experimental.jvmhost.JvmScriptCompiler
 import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromTemplate
-import kotlin.reflect.KClass
+import org.jetbrains.kotlin.scripting.compiler.plugin.impl.ScriptJvmCompilerIsolated
 
 const val SIMPLE_SCRIPT_EXTENSION = "kts"
 
@@ -35,16 +26,19 @@ class SimpleScriptService(
     private val simpleScript: SimpleScript
 ) {
     private val pluginClassLoader = simpleScript.javaClass.classLoader
-    private val pluginClasspath = createPluginClasspath()
     private val configurator = SimpleScriptConfigurator(simpleScript.slF4JLogger)
-    private val hostConfiguration = ScriptingHostConfiguration {
-        if (pluginClasspath.isNotEmpty()) {
-            configurationDependencies.append(JvmDependency(pluginClasspath))
-        }
+    private val hostConfiguration = ScriptingHostConfiguration {}
 
-        getScriptingClass(PluginFirstGetScriptingClass(pluginClassLoader))
-    }
-    private val scriptingHost = BasicJvmScriptingHost(hostConfiguration)
+    // Kotlin 2.4 defaults the JVM scripting host to the K2 compiler. At the moment K2
+    // crashes when importScripts exposes callables with parameters from an imported script,
+    // so use the legacy K1 scripting compiler until that path is fixed upstream.
+    private val scriptingHost = BasicJvmScriptingHost(
+        baseHostConfiguration = hostConfiguration,
+        compiler = JvmScriptCompiler(
+            baseHostConfiguration = hostConfiguration,
+            compilerProxy = ScriptJvmCompilerIsolated(hostConfiguration)
+        )
+    )
 
     private val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<SimpleScriptTemplate>(hostConfiguration) {
         defaultImports(
@@ -53,11 +47,13 @@ class SimpleScriptService(
         )
 
         jvm {
+            // In Canvas/Paper shadow jars the plugin classloader can already see the plugin
+            // classes and shaded scripting dependencies. With the K1 compiler this is enough
+            // for @file:Import and the script template; no manual plugin jar classpath is needed.
             dependenciesFromClassloader(
                 classLoader = pluginClassLoader,
                 wholeClasspath = true
             )
-            updateClasspath(pluginClasspath)
         }
 
         refineConfiguration {
@@ -83,57 +79,6 @@ class SimpleScriptService(
             compilationConfiguration,
             evaluationConfiguration
         )
-    }
-
-    private fun createPluginClasspath(): List<File> {
-        val classLoaderUrls = (pluginClassLoader as? URLClassLoader)
-            ?.urLs
-            .orEmpty()
-            .mapNotNull { url -> url.toClasspathFileOrNull() }
-
-        val codeSourceUrls = listOfNotNull(
-            simpleScript.javaClass.protectionDomain?.codeSource?.location,
-            Import::class.java.protectionDomain?.codeSource?.location,
-            SimpleScriptTemplate::class.java.protectionDomain?.codeSource?.location
-        ).mapNotNull { url -> url.toClasspathFileOrNull() }
-
-        return (classLoaderUrls + codeSourceUrls)
-            .map { file -> file.absoluteFile }
-            .distinct()
-    }
-
-    private fun URL.toClasspathFileOrNull(): File? {
-        if (protocol != "file") {
-            return null
-        }
-
-        return runCatching { Path.of(toURI()).toFile() }.getOrNull()
-    }
-}
-
-private class PluginFirstGetScriptingClass(
-    private val pluginClassLoader: ClassLoader
-) : GetScriptingClassByClassLoader {
-    private val fallback = JvmGetScriptingClass()
-
-    override fun invoke(
-        classType: KotlinType,
-        contextClass: KClass<*>,
-        hostConfiguration: ScriptingHostConfiguration
-    ): KClass<*> {
-        return invoke(classType, contextClass.java.classLoader, hostConfiguration)
-    }
-
-    override fun invoke(
-        classType: KotlinType,
-        contextClassLoader: ClassLoader?,
-        hostConfiguration: ScriptingHostConfiguration
-    ): KClass<*> {
-        val loadedClass = runCatching {
-            pluginClassLoader.loadClass(classType.typeName).kotlin
-        }.getOrNull()
-
-        return loadedClass ?: fallback.invoke(classType, contextClassLoader, hostConfiguration)
     }
 }
 

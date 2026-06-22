@@ -1,5 +1,5 @@
 [versions]
-kotlinJvm = "2.3.20"
+kotlinJvm = "2.4.0"
 kotlinxSerialization = "1.10.0"
 coroutines = "1.10.2"
 caffeine = "3.2.3"
@@ -20,6 +20,7 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 kotlin-scripting-common = { module = "org.jetbrains.kotlin:kotlin-scripting-common", version.ref = "kotlinJvm" }
 kotlin-scripting-jvm = { module = "org.jetbrains.kotlin:kotlin-scripting-jvm", version.ref = "kotlinJvm" }
 kotlin-scripting-jvm-host = { module = "org.jetbrains.kotlin:kotlin-scripting-jvm-host", version.ref = "kotlinJvm" }
+kotlin-scripting-compiler-embeddable = { module = "org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable", version.ref = "kotlinJvm" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 lettuce-core = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }

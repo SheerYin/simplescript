@@ -29,6 +29,7 @@ dependencies {
     implementation(libs.kotlin.scripting.common)
     implementation(libs.kotlin.scripting.jvm)
     implementation(libs.kotlin.scripting.jvm.host)
+    implementation(libs.kotlin.scripting.compiler.embeddable)
     implementation(libs.caffeine)
     implementation(libs.lettuce.core)
     implementation(libs.postgresql)
