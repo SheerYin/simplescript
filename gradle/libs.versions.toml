@@ -1,20 +1,18 @@
 [versions]
 kotlinJvm = "2.4.0"
-kotlinxSerialization = "1.10.0"
-coroutines = "1.10.2"
-caffeine = "3.2.3"
-lettuce = "7.5.1.RELEASE"
-postgresql = "42.7.10"
-hikari = "7.0.2"
+kotlinxSerialization = "1.11.0"
+coroutines = "1.11.0"
+caffeine = "3.2.4"
+lettuce = "7.6.0.RELEASE"
+postgresql = "42.7.11"
+hikari = "7.1.0"
 configurate = "4.2.0"
-sqliteJdbc = "3.53.1.0"
-shadow = "9.4.1"
+sqliteJdbc = "3.53.2.0"
+shadow = "9.4.2"
 resourceFactoryPaper = "1.3.1"
-canvasWeaverUserdev = "2.4.4"
-velocityApi = "3.4.0-SNAPSHOT"
+canvasWeaverUserdev = "2.4.5"
 
 [libraries]
-velocity-api = { module = "com.velocitypowered:velocity-api", version.ref = "velocityApi" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlin-scripting-common = { module = "org.jetbrains.kotlin:kotlin-scripting-common", version.ref = "kotlinJvm" }

@@ -53,7 +53,7 @@ dependencies {
 }
 
 val minecraftPluginName = "SimpleScript"
-val minecraftPluginApiVersion = "1.21.11"
+val minecraftPluginApiVersion = "26.1.2"
 val minecraftPluginVersion = project.version.toString()
 val minecraftPluginAuthors = listOf("尹")
 val minecraftPluginPrefix = "简单脚本"
@@ -75,7 +75,7 @@ paperPluginYaml {
     foliaSupported = true
 }
 
-val generatePaperLibraries by tasks.registering {
+val generatePaperLibraries = tasks.register("generatePaperLibraries") {
     val outputFile = layout.buildDirectory.file("generated/paper/libraries.text")
     outputs.file(outputFile)
     inputs.files(configurations.runtimeClasspath)

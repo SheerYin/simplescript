@@ -22,7 +22,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly(libs.velocity.api)
+    compileOnly("com.velocitypowered:velocity-api:3.4.0")
 
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
@@ -49,7 +49,7 @@ val minecraftPluginJarName = "$minecraftPluginName-${project.name}"
 val minecraftPluginJarFileName = "$minecraftPluginJarName.jar"
 val minecraftPluginShadowJarFileName = "$minecraftPluginJarName-shadow.jar"
 
-val generateVelocityPluginJson by tasks.registering {
+val generateVelocityPluginJson = tasks.register("generateVelocityPluginJson") {
     val outputFile = layout.buildDirectory.file("generated/velocity/velocity-plugin.json")
 
     inputs.property("minecraftPluginId", minecraftPluginId)
