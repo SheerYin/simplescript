@@ -25,7 +25,6 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven("https://maven.canvasmc.io/releases")
-    maven("https://repo.papermc.io/repository/maven-public/")
 }
 
 dependencies {
