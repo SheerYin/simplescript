@@ -1,4 +1,4 @@
-package me.yin.simplescript.newscript
+package me.yin.simplescript.script
 
 import kotlinx.coroutines.CoroutineScope
 import me.yin.simplescript.SimpleScript
@@ -15,3 +15,4 @@ class SimpleScriptContext(
         registerUnloadCallback(block)
     }
 }
+

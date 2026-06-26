@@ -1,4 +1,4 @@
-package me.yin.simplescript.newscript
+package me.yin.simplescript.script
 
 import org.jetbrains.kotlin.scripting.compiler.plugin.impl.ScriptJvmCompilerIsolated
 import org.slf4j.Logger
@@ -67,3 +67,4 @@ class SimpleScriptCompiler(
         return result
     }
 }
+

@@ -1,4 +1,4 @@
-package me.yin.simplescript.newscript
+package me.yin.simplescript.script
 
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.suggestion.Suggestions
@@ -281,3 +281,4 @@ class SimpleScriptCommand(
         val COMMAND_ALIASES: List<String> = listOf("ss")
     }
 }
+

@@ -113,7 +113,7 @@ val checkScripts = tasks.register<JavaExec>("checkScripts") {
     }
     val checkScriptsWorkingDirectory = layout.buildDirectory.dir("checkScripts")
     classpath = mainSourceSet.output + mainSourceSet.compileClasspath + mainSourceSet.runtimeClasspath
-    mainClass.set("me.yin.simplescript.newscript.SimpleScriptCompileChecker")
+    mainClass.set("me.yin.simplescript.script.SimpleScriptCompileChecker")
     args(scriptFiles.files.sorted().map { file -> file.path })
     inputs.files(scriptFiles)
     workingDir = checkScriptsWorkingDirectory.get().asFile

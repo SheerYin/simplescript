@@ -1,4 +1,4 @@
-package me.yin.simplescript.newscript
+package me.yin.simplescript.script
 
 @Repeatable
 @Target(AnnotationTarget.FILE)
@@ -9,3 +9,4 @@ annotation class Import(vararg val paths: String)
 @Target(AnnotationTarget.FILE)
 @Retention(AnnotationRetention.SOURCE)
 annotation class CompilerOptions(vararg val options: String)
+

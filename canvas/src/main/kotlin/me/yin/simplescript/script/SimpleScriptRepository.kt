@@ -1,4 +1,4 @@
-package me.yin.simplescript.newscript
+package me.yin.simplescript.script
 
 import org.slf4j.Logger
 import java.nio.file.Files
@@ -76,3 +76,4 @@ data class ScriptFile(
     val id: String,
     val path: Path
 )
+

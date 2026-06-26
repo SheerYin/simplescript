@@ -1,4 +1,4 @@
-package me.yin.simplescript.newscript
+package me.yin.simplescript.script
 
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
@@ -47,3 +47,4 @@ object SimpleScriptCompileChecker {
         println("Checked ${args.size} script(s)")
     }
 }
+

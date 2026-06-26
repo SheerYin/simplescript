@@ -116,7 +116,7 @@ class TutorialClass(
     private fun createK1Compiler(hostConfiguration: ScriptingHostConfiguration): JvmScriptCompiler {
         // BasicJvmScriptingHost may use Kotlin's newer K2 scripting path by default.
         // SimpleScript deliberately constructs this compiler, the same way as the
-        // newscript compiler, to stay on the legacy K1 scripting compiler path.
+        // script compiler, to stay on the legacy K1 scripting compiler path.
         //
         // JvmScriptCompiler turns .kts source into a compiled JVM script object.
         // ScriptJvmCompilerIsolated runs that compiler through an isolated proxy,
@@ -306,3 +306,4 @@ data class EvaluateResult(
     val returnValue: String?,
     val diagnostics: List<CompileOnlyDiagnostic>
 )
+

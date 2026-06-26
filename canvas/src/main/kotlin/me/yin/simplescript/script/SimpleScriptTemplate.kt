@@ -1,4 +1,4 @@
-package me.yin.simplescript.newscript
+package me.yin.simplescript.script
 
 import kotlin.script.experimental.annotations.KotlinScript
 import kotlin.script.experimental.api.ScriptCompilationConfiguration
@@ -14,3 +14,4 @@ abstract class SimpleScriptTemplate(
 object SimpleScriptCompilationConfiguration : ScriptCompilationConfiguration({})
 
 const val SIMPLE_SCRIPT_EXTENSION = "kts"
+

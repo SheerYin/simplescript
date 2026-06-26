@@ -1,4 +1,4 @@
-package me.yin.simplescript.newscript
+package me.yin.simplescript.script
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -248,3 +248,4 @@ data class LoadSummary(
     val loaded: Int,
     val failed: List<String>
 )
+

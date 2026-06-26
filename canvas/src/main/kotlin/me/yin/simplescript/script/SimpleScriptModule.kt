@@ -1,4 +1,4 @@
-package me.yin.simplescript.newscript
+package me.yin.simplescript.script
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -47,3 +47,4 @@ class SimpleScriptModule(
         }
     }
 }
+

@@ -1,4 +1,4 @@
-package me.yin.simplescript.newscript
+package me.yin.simplescript.script
 
 import me.yin.simplescript.SimpleScript
 import java.nio.file.Path
@@ -49,3 +49,4 @@ class SimpleScriptRuntime(
         return result
     }
 }
+
