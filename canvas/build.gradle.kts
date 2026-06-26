@@ -56,7 +56,6 @@ val minecraftPluginLoader = "$minecraftPluginGroup.${minecraftPluginName}Loader"
 val minecraftPluginJarName = "$minecraftPluginName-${project.name}"
 val minecraftPluginJarFileName = "$minecraftPluginJarName.jar"
 val minecraftPluginShadowJarFileName = "$minecraftPluginJarName-shadow.jar"
-val simpleScriptExtension = "kts"
 
 paperPluginYaml {
     name = minecraftPluginName
@@ -102,7 +101,7 @@ val checkScripts = tasks.register<JavaExec>("checkScripts") {
     val mainSourceSet = sourceSets.main.get()
     val scriptDirectoryPath = layout.projectDirectory.dir("src/main/resources/script/main")
     val scriptFiles = fileTree(scriptDirectoryPath) {
-        include("**/*.$simpleScriptExtension")
+        include("**/*.kts")
     }
     val checkScriptsWorkingDirectory = layout.buildDirectory.dir("checkScripts")
     classpath = mainSourceSet.output + mainSourceSet.compileClasspath + mainSourceSet.runtimeClasspath
@@ -112,7 +111,7 @@ val checkScripts = tasks.register<JavaExec>("checkScripts") {
         .sortedBy { path -> path.toString() }
     scriptPaths.forEach { path ->
         require(Files.isRegularFile(path)) { "Script path is not a regular file: $path" }
-        require(path.fileName.toString().endsWith(".$simpleScriptExtension")) { "Script path is not a .$simpleScriptExtension file: $path" }
+        require(path.fileName.toString().endsWith(".kts")) { "Script path is not a .kts file: $path" }
     }
     args(scriptPaths.map { path -> path.toString() })
     inputs.files(scriptFiles)
