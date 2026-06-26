@@ -19,12 +19,6 @@ version = "1.0.0-SNAPSHOT"
 
 kotlin {
     jvmToolchain(25)
-
-    sourceSets {
-        main {
-            kotlin.srcDir("src/main/resources/scripts")
-        }
-    }
 }
 
 repositories {
@@ -63,6 +57,7 @@ val minecraftPluginLoader = "$minecraftPluginGroup.${minecraftPluginName}Loader"
 val minecraftPluginJarName = "$minecraftPluginName-${project.name}"
 val minecraftPluginJarFileName = "$minecraftPluginJarName.jar"
 val minecraftPluginShadowJarFileName = "$minecraftPluginJarName-shadow.jar"
+val simpleScriptExtension = "kts"
 
 paperPluginYaml {
     name = minecraftPluginName
@@ -105,6 +100,30 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
     compilerOptions {
         freeCompilerArgs.add("-Xuse-fir-lt=false")
     }
+}
+
+val checkScripts = tasks.register<JavaExec>("checkScripts") {
+    group = "verification"
+    description = "Compiles bundled SimpleScript scripts without evaluating them."
+
+    val mainSourceSet = sourceSets.main.get()
+    val scriptDirectoryPath = layout.projectDirectory.dir("src/main/resources/script/main")
+    val checkScriptsWorkingDirectory = layout.buildDirectory.dir("checkScripts")
+    classpath = mainSourceSet.output + mainSourceSet.compileClasspath + mainSourceSet.runtimeClasspath
+    mainClass.set("me.yin.simplescript.script.SimpleScriptChecker")
+    args(scriptDirectoryPath.asFile.path)
+    inputs.files(fileTree(scriptDirectoryPath) {
+        include("**/*.$simpleScriptExtension")
+    })
+    workingDir = checkScriptsWorkingDirectory.get().asFile
+
+    doFirst {
+        checkScriptsWorkingDirectory.get().asFile.mkdirs()
+    }
+}
+
+tasks.check {
+    dependsOn(checkScripts)
 }
 
 tasks.jar {
