@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import me.yin.simplescript.velocity.SimpleScriptVelocity
+import me.yin.simplescript.velocity.script.permission.SimpleScriptPermissions
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.slf4j.Logger
@@ -25,28 +26,14 @@ class SimpleScriptCommand(
     private val logger: Logger,
     private val manager: SimpleScriptManager,
     private val coroutineScope: CoroutineScope,
+    private val permissions: SimpleScriptPermissions,
     private val prefix: String
 ) {
     @Volatile
     var scriptSuggestionSemaphore = Semaphore(2)
 
-    @Volatile
-    var basePermission = "simplescript.command"
-
-    @Volatile
-    var permissionScriptReload = "simplescript.command.reload"
-
-    @Volatile
-    var permissionScriptLoad = "simplescript.command.load"
-
-    @Volatile
-    var permissionScriptUnload = "simplescript.command.unload"
-
-    @Volatile
-    var permissionScriptList = "simplescript.command.list"
-
     fun register() {
-        val command = BrigadierCommand(rootCommand())
+        val command = BrigadierCommand(simpleScriptNode())
         val meta = proxy.commandManager.metaBuilder(command)
             .aliases(*COMMAND_ALIASES.toTypedArray())
             .plugin(simpleScriptVelocity)
@@ -54,75 +41,83 @@ class SimpleScriptCommand(
         proxy.commandManager.register(meta, command)
     }
 
-    private fun rootCommand(): LiteralArgumentBuilder<CommandSource> = BrigadierCommand.literalArgumentBuilder(MAIN_COMMAND)
-        .requires { source -> source.hasPermission(basePermission) }
-        .executes { context ->
-            sendHelp(context.source)
-            return@executes 1
-        }
-        .then(
-            BrigadierCommand.literalArgumentBuilder("reload")
-                .requires { source -> source.hasPermission(permissionScriptReload) }
-                .executes { context ->
-                    reload(context.source)
-                    return@executes 1
-                }
-                .then(
-                    BrigadierCommand.requiredArgumentBuilder("id", StringArgumentType.greedyString())
-                        .suggests { _, builder ->
-                            suggestLoadedSync(builder)
-                            builder.buildFuture()
-                        }
-                        .executes { context ->
-                            reload(
-                                context.source,
-                                StringArgumentType.getString(context, "id")
-                            )
-                            return@executes 1
-                        }
-                )
-        )
-        .then(
-            BrigadierCommand.literalArgumentBuilder("load")
-                .requires { source -> source.hasPermission(permissionScriptLoad) }
-                .then(
-                    BrigadierCommand.requiredArgumentBuilder("id", StringArgumentType.greedyString())
-                        .suggests { _, builder -> suggestUnloadedAsync(builder) }
-                        .executes { context ->
-                            load(
-                                context.source,
-                                StringArgumentType.getString(context, "id")
-                            )
-                            return@executes 1
-                        }
-                )
-        )
-        .then(
-            BrigadierCommand.literalArgumentBuilder("unload")
-                .requires { source -> source.hasPermission(permissionScriptUnload) }
-                .then(
-                    BrigadierCommand.requiredArgumentBuilder("id", StringArgumentType.greedyString())
-                        .suggests { _, builder ->
-                            suggestLoadedSync(builder)
-                            builder.buildFuture()
-                        }
-                        .executes { context ->
-                            unload(
-                                context.source,
-                                StringArgumentType.getString(context, "id")
-                            )
-                            return@executes 1
-                        }
-                )
-        )
-        .then(
-            BrigadierCommand.literalArgumentBuilder("list")
-                .requires { source -> source.hasPermission(permissionScriptList) }
-                .executes { context ->
-                    list(context.source)
-                    return@executes 1
-                }
-        )
+    fun simpleScriptNode(): LiteralArgumentBuilder<CommandSource> {
+        val root = BrigadierCommand.literalArgumentBuilder(MAIN_COMMAND)
+            .requires { source -> source.hasPermission(permissions.simpleScriptCommand) }
+            .then(reloadBuilder())
+            .then(loadBuilder())
+            .then(unloadBuilder())
+            .then(listBuilder())
+
+        return root
+    }
+
+    fun reloadBuilder(name: String = "reload"): LiteralArgumentBuilder<CommandSource> {
+        return BrigadierCommand.literalArgumentBuilder(name)
+            .requires { source -> source.hasPermission(permissions.reloadCommand) }
+            .executes { context ->
+                reload(context.source)
+                return@executes 1
+            }
+            .then(
+                BrigadierCommand.requiredArgumentBuilder("id", StringArgumentType.greedyString())
+                    .suggests { _, builder ->
+                        suggestLoadedSync(builder)
+                        builder.buildFuture()
+                    }
+                    .executes { context ->
+                        reload(
+                            context.source,
+                            StringArgumentType.getString(context, "id")
+                        )
+                        return@executes 1
+                    }
+            )
+    }
+
+    fun loadBuilder(name: String = "load"): LiteralArgumentBuilder<CommandSource> {
+        return BrigadierCommand.literalArgumentBuilder(name)
+            .requires { source -> source.hasPermission(permissions.loadCommand) }
+            .then(
+                BrigadierCommand.requiredArgumentBuilder("id", StringArgumentType.greedyString())
+                    .suggests { _, builder -> suggestUnloadedAsync(builder) }
+                    .executes { context ->
+                        load(
+                            context.source,
+                            StringArgumentType.getString(context, "id")
+                        )
+                        return@executes 1
+                    }
+            )
+    }
+
+    fun unloadBuilder(name: String = "unload"): LiteralArgumentBuilder<CommandSource> {
+        return BrigadierCommand.literalArgumentBuilder(name)
+            .requires { source -> source.hasPermission(permissions.unloadCommand) }
+            .then(
+                BrigadierCommand.requiredArgumentBuilder("id", StringArgumentType.greedyString())
+                    .suggests { _, builder ->
+                        suggestLoadedSync(builder)
+                        builder.buildFuture()
+                    }
+                    .executes { context ->
+                        unload(
+                            context.source,
+                            StringArgumentType.getString(context, "id")
+                        )
+                        return@executes 1
+                    }
+            )
+    }
+
+    fun listBuilder(name: String = "list"): LiteralArgumentBuilder<CommandSource> {
+        return BrigadierCommand.literalArgumentBuilder(name)
+            .requires { source -> source.hasPermission(permissions.listCommand) }
+            .executes { context ->
+                list(context.source)
+                return@executes 1
+            }
+    }
 
     private fun reload(source: CommandSource) {
         coroutineScope.launch {
@@ -250,15 +245,6 @@ class SimpleScriptCommand(
 
             builder.build()
         }
-    }
-
-    private fun sendHelp(source: CommandSource) {
-        source.sendMessage(prefixMessage("/$MAIN_COMMAND reload"))
-        source.sendMessage(prefixMessage("/$MAIN_COMMAND reload <id>"))
-        source.sendMessage(prefixMessage("/$MAIN_COMMAND load <id>"))
-        source.sendMessage(prefixMessage("/$MAIN_COMMAND unload <id>"))
-        source.sendMessage(prefixMessage("/$MAIN_COMMAND list"))
-        source.sendMessage(prefixMessage("Aliases: ${COMMAND_ALIASES.joinToString { "/$it" }}"))
     }
 
     private fun prefixMessage(message: String = ""): Component {

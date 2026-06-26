@@ -5,12 +5,14 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import me.yin.simplescript.SimpleScript
+import me.yin.simplescript.script.permission.SimpleScriptPermissions
 
 class SimpleScriptModule(
     private val simpleScript: SimpleScript,
     parentCoroutineScope: CoroutineScope
 ) {
     val prefix: String = simpleScript.pluginMeta.loggerPrefix ?: simpleScript.pluginMeta.name
+    val permissions: SimpleScriptPermissions = SimpleScriptPermissions()
 
     private val parentJob: Job? = parentCoroutineScope.coroutineContext[Job]
     private val coroutineScope: CoroutineScope = CoroutineScope(parentCoroutineScope.coroutineContext + SupervisorJob(parentJob))
@@ -28,6 +30,7 @@ class SimpleScriptModule(
         simpleScript = simpleScript,
         manager = manager,
         coroutineScope = coroutineScope,
+        permissions = permissions,
         prefix = prefix
     )
 

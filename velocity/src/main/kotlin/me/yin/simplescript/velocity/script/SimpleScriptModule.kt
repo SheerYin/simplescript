@@ -6,6 +6,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import me.yin.simplescript.velocity.SimpleScriptVelocity
+import me.yin.simplescript.velocity.script.permission.SimpleScriptPermissions
 import org.slf4j.Logger
 import java.nio.file.Path
 
@@ -17,6 +18,7 @@ class SimpleScriptModule(
     parentCoroutineScope: CoroutineScope
 ) {
     val prefix: String = "简单脚本"
+    val permissions: SimpleScriptPermissions = SimpleScriptPermissions()
 
     private val parentJob = parentCoroutineScope.coroutineContext[Job]
     private val coroutineScope = CoroutineScope(parentCoroutineScope.coroutineContext + SupervisorJob(parentJob))
@@ -41,6 +43,7 @@ class SimpleScriptModule(
         logger = logger,
         manager = manager,
         coroutineScope = coroutineScope,
+        permissions = permissions,
         prefix = prefix
     )
 
