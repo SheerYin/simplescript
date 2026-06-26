@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import me.yin.simplescript.listener.AsyncPlayerPreLoginListener
-import me.yin.simplescript.script.SimpleScriptModule
+import me.yin.simplescript.newscript.SimpleScriptModule
 import org.bukkit.World
 import org.bukkit.entity.Entity
 import org.bukkit.plugin.IllegalPluginAccessException

@@ -20,6 +20,9 @@ class SimpleScriptRuntime(
         classLoader = classLoader,
         logger = simpleScript.slF4JLogger
     )
+
+    // Evaluation runs an already compiled script. The K1/K2 choice is fixed in
+    // SimpleScriptCompiler, where the CompiledScript is produced.
     private val evaluator: ScriptEvaluator = BasicJvmScriptEvaluator()
 
     suspend fun compile(path: Path): ResultWithDiagnostics<CompiledScript> {

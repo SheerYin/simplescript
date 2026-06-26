@@ -108,13 +108,14 @@ val checkScripts = tasks.register<JavaExec>("checkScripts") {
 
     val mainSourceSet = sourceSets.main.get()
     val scriptDirectoryPath = layout.projectDirectory.dir("src/main/resources/script/main")
+    val scriptFiles = fileTree(scriptDirectoryPath) {
+        include("**/*.$simpleScriptExtension")
+    }
     val checkScriptsWorkingDirectory = layout.buildDirectory.dir("checkScripts")
     classpath = mainSourceSet.output + mainSourceSet.compileClasspath + mainSourceSet.runtimeClasspath
-    mainClass.set("me.yin.simplescript.script.SimpleScriptChecker")
-    args(scriptDirectoryPath.asFile.path)
-    inputs.files(fileTree(scriptDirectoryPath) {
-        include("**/*.$simpleScriptExtension")
-    })
+    mainClass.set("me.yin.simplescript.newscript.SimpleScriptCompileChecker")
+    args(scriptFiles.files.sorted().map { file -> file.path })
+    inputs.files(scriptFiles)
     workingDir = checkScriptsWorkingDirectory.get().asFile
 
     doFirst {

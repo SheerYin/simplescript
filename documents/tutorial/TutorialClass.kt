@@ -60,8 +60,8 @@ class TutorialClass(
      * Stage 1 + Stage 2: compile the .kts file, then evaluate it with a real
      * SimpleScriptContext.
      *
-     * This is the part that actually executes top-level script code. SimpleScriptService
-     * uses the same kind of host.eval(...) call in the real plugin.
+     * This is the part that actually executes top-level script code. SimpleScriptRuntime
+     * uses the same kind of evaluation step in the real plugin.
      */
     fun evaluate(scriptPath: Path, context: SimpleScriptContext): EvaluateResult {
         val hostConfiguration: ScriptingHostConfiguration = createHostConfiguration()
@@ -115,8 +115,8 @@ class TutorialClass(
 
     private fun createK1Compiler(hostConfiguration: ScriptingHostConfiguration): JvmScriptCompiler {
         // BasicJvmScriptingHost may use Kotlin's newer K2 scripting path by default.
-        // SimpleScript deliberately constructs this compiler, the same way as
-        // SimpleScriptCompilation, to stay on the legacy K1 scripting compiler path.
+        // SimpleScript deliberately constructs this compiler, the same way as the
+        // newscript compiler, to stay on the legacy K1 scripting compiler path.
         //
         // JvmScriptCompiler turns .kts source into a compiled JVM script object.
         // ScriptJvmCompilerIsolated runs that compiler through an isolated proxy,

@@ -21,6 +21,11 @@ class SimpleScriptCompiler(
     logger: Logger
 ) {
     private val hostConfiguration: ScriptingHostConfiguration = ScriptingHostConfiguration {}
+
+    // Kotlin 2.4's JVM scripting host may choose the newer K2 scripting path by default.
+    // At the moment K2 can fail when imported scripts expose callables with parameters,
+    // so SimpleScript constructs JvmScriptCompiler directly with ScriptJvmCompilerIsolated
+    // to stay on the legacy K1 scripting compiler path for compilation.
     private val compiler: JvmScriptCompiler = JvmScriptCompiler(
         baseHostConfiguration = hostConfiguration,
         compilerProxy = ScriptJvmCompilerIsolated(hostConfiguration)
