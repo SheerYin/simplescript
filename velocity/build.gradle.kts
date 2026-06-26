@@ -48,6 +48,7 @@ val minecraftPluginMain = "$minecraftPluginGroup.velocity.${minecraftPluginName}
 val minecraftPluginJarName = "$minecraftPluginName-${project.name}"
 val minecraftPluginJarFileName = "$minecraftPluginJarName.jar"
 val minecraftPluginShadowJarFileName = "$minecraftPluginJarName-shadow.jar"
+val simpleScriptExtension = "kts"
 
 val generateVelocityPluginJson = tasks.register("generateVelocityPluginJson") {
     val outputFile = layout.buildDirectory.file("generated/velocity/velocity-plugin.json")
@@ -86,6 +87,38 @@ val generateVelocityPluginJson = tasks.register("generateVelocityPluginJson") {
 
 tasks.processResources {
     from(generateVelocityPluginJson)
+}
+
+val checkScripts = tasks.register<JavaExec>("checkScripts") {
+    group = "verification"
+    description = "Compiles bundled SimpleScript scripts without evaluating them."
+
+    val mainSourceSet = sourceSets.main.get()
+    val scriptDirectoryPath = layout.projectDirectory.dir("src/main/resources/script/main")
+    val scriptFiles = fileTree(scriptDirectoryPath) {
+        include("**/*.$simpleScriptExtension")
+    }
+    val checkScriptsWorkingDirectory = layout.buildDirectory.dir("checkScripts")
+    classpath = mainSourceSet.output + mainSourceSet.compileClasspath + mainSourceSet.runtimeClasspath
+    mainClass.set("me.yin.simplescript.velocity.script.SimpleScriptCompileChecker")
+    val scriptPaths = scriptFiles.files
+        .map { file -> file.toPath().toAbsolutePath() }
+        .sortedBy { path -> path.toString() }
+    scriptPaths.forEach { path ->
+        require(Files.isRegularFile(path)) { "Script path is not a regular file: $path" }
+        require(path.fileName.toString().endsWith(".$simpleScriptExtension")) { "Script path is not a .$simpleScriptExtension file: $path" }
+    }
+    args(scriptPaths.map { path -> path.toString() })
+    inputs.files(scriptFiles)
+    workingDir = checkScriptsWorkingDirectory.get().asFile
+
+    doFirst {
+        checkScriptsWorkingDirectory.get().asFile.mkdirs()
+    }
+}
+
+tasks.check {
+    dependsOn(checkScripts)
 }
 
 tasks.jar {

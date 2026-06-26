@@ -23,7 +23,7 @@ class SimpleScriptCommand(
     private val simpleScriptVelocity: SimpleScriptVelocity,
     private val proxy: ProxyServer,
     private val logger: Logger,
-    private val scriptManager: SimpleScriptManager,
+    private val manager: SimpleScriptManager,
     private val coroutineScope: CoroutineScope,
     private val prefix: String
 ) {
@@ -128,7 +128,7 @@ class SimpleScriptCommand(
         coroutineScope.launch {
             try {
                 simpleScriptVelocity.ready = false
-                val summary = scriptManager.reloadScripts()
+                val summary: LoadSummary = manager.reloadScripts()
                 simpleScriptVelocity.ready = true
                 sendLoadSummary(source, "Reloaded", summary)
             } catch (exception: CancellationException) {
@@ -143,7 +143,7 @@ class SimpleScriptCommand(
     private fun reload(source: CommandSource, scriptId: String) {
         coroutineScope.launch {
             try {
-                when (scriptManager.reloadScript(scriptId)) {
+                when (manager.reloadScript(scriptId)) {
                     ReloadResult.RELOADED -> source.sendMessage(prefixMessage("Reloaded script $scriptId"))
                     ReloadResult.NOT_LOADED -> source.sendMessage(prefixMessage().append(Component.text("Script not loaded: $scriptId", NamedTextColor.RED)))
                     ReloadResult.ALREADY_LOADED -> source.sendMessage(prefixMessage().append(Component.text("Script already loaded: $scriptId", NamedTextColor.RED)))
@@ -160,7 +160,7 @@ class SimpleScriptCommand(
     private fun load(source: CommandSource, scriptId: String) {
         coroutineScope.launch {
             try {
-                when (scriptManager.loadScript(scriptId)) {
+                when (manager.loadScript(scriptId)) {
                     LoadResult.LOADED -> source.sendMessage(prefixMessage("Loaded script $scriptId"))
                     LoadResult.ALREADY_LOADED -> source.sendMessage(prefixMessage().append(Component.text("Script already loaded: $scriptId", NamedTextColor.RED)))
                     LoadResult.NOT_FOUND -> source.sendMessage(prefixMessage().append(Component.text("Script not found: $scriptId", NamedTextColor.RED)))
@@ -175,7 +175,7 @@ class SimpleScriptCommand(
     private fun unload(source: CommandSource, scriptId: String) {
         coroutineScope.launch {
             try {
-                when (scriptManager.unloadScript(scriptId)) {
+                when (manager.unloadScript(scriptId)) {
                     UnloadResult.UNLOADED -> source.sendMessage(prefixMessage("Unloaded script $scriptId"))
                     UnloadResult.NOT_LOADED -> source.sendMessage(prefixMessage().append(Component.text("Script not loaded: $scriptId", NamedTextColor.RED)))
                     UnloadResult.FAILED -> source.sendMessage(prefixMessage().append(Component.text("Failed to unload script $scriptId; see console for details", NamedTextColor.RED)))
@@ -187,13 +187,13 @@ class SimpleScriptCommand(
     }
 
     private fun list(source: CommandSource) {
-        val ids = scriptManager.unloadCallbacksByScriptId.keys.sorted()
+        val ids: List<String> = manager.loadedScriptIds()
         if (ids.isEmpty()) {
             source.sendMessage(prefixMessage("No scripts loaded"))
             return
         }
         source.sendMessage(prefixMessage("Loaded ${ids.size} script(s):"))
-        for (id in ids) {
+        for (id: String in ids) {
             source.sendMessage(prefixMessage("  - $id"))
         }
     }
@@ -208,7 +208,7 @@ class SimpleScriptCommand(
             prefixMessage()
                 .append(Component.text("$action ${summary.loaded} script(s), failed ${summary.failed.size} script(s)", NamedTextColor.RED))
         )
-        for (id in summary.failed.sorted()) {
+        for (id: String in summary.failed.sorted()) {
             source.sendMessage(
                 prefixMessage()
                     .append(Component.text("  - $id", NamedTextColor.RED))
@@ -217,8 +217,8 @@ class SimpleScriptCommand(
     }
 
     private fun suggestLoadedSync(builder: SuggestionsBuilder) {
-        val remaining = builder.remainingLowerCase
-        for (id in scriptManager.unloadCallbacksByScriptId.keys.sorted()) {
+        val remaining: String = builder.remainingLowerCase
+        for (id: String in manager.loadedScriptIds()) {
             if (id.contains(remaining, ignoreCase = true)) {
                 builder.suggest(id)
             }
@@ -232,11 +232,11 @@ class SimpleScriptCommand(
         return coroutineScope.future {
             try {
                 scriptSuggestionSemaphore.withPermit {
-                    val loaded = scriptManager.unloadCallbacksByScriptId.keys
-                    val unloaded = scriptManager.availableScriptIds()
-                        .filter { it !in loaded }
+                    val loaded: Set<String> = manager.loadedScriptIds().toSet()
+                    val unloaded: List<String> = manager.availableScriptIds()
+                        .filter { id: String -> id !in loaded }
                         .sorted()
-                    for (id in unloaded) {
+                    for (id: String in unloaded) {
                         if (id.contains(lowercasePrefix, ignoreCase = true)) {
                             builder.suggest(id)
                         }

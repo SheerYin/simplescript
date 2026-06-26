@@ -13,9 +13,9 @@ class SimpleScriptContext(
     val dataDirectory: Path,
     val logger: Logger,
     val scope: CoroutineScope,
-    private val registerUnloadCallback: (String, suspend () -> Unit) -> Unit
+    private val registerUnloadCallback: (suspend () -> Unit) -> Unit
 ) {
     fun onUnload(block: suspend () -> Unit) {
-        registerUnloadCallback(scriptId, block)
+        registerUnloadCallback(block)
     }
 }

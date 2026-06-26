@@ -21,13 +21,16 @@ class SimpleScriptModule(
     private val parentJob = parentCoroutineScope.coroutineContext[Job]
     private val coroutineScope = CoroutineScope(parentCoroutineScope.coroutineContext + SupervisorJob(parentJob))
 
-    val scriptService: SimpleScriptService = SimpleScriptService(simpleScriptVelocity)
+    val runtime: SimpleScriptRuntime = SimpleScriptRuntime(
+        simpleScriptVelocity = simpleScriptVelocity,
+        logger = logger
+    )
 
-    val scriptManager: SimpleScriptManager = SimpleScriptManager(
+    val manager: SimpleScriptManager = SimpleScriptManager(
         simpleScriptVelocity = simpleScriptVelocity,
         proxy = proxy,
         dataDirectory = dataDirectory,
-        scriptService = scriptService,
+        runtime = runtime,
         coroutineScope = coroutineScope,
         logger = logger
     )
@@ -36,7 +39,7 @@ class SimpleScriptModule(
         simpleScriptVelocity = simpleScriptVelocity,
         proxy = proxy,
         logger = logger,
-        scriptManager = scriptManager,
+        manager = manager,
         coroutineScope = coroutineScope,
         prefix = prefix
     )
@@ -46,12 +49,12 @@ class SimpleScriptModule(
     }
 
     suspend fun load(): LoadSummary {
-        return scriptManager.load()
+        return manager.load()
     }
 
     suspend fun close() {
         try {
-            scriptManager.close()
+            manager.unload()
         } finally {
             coroutineScope.cancel()
         }
