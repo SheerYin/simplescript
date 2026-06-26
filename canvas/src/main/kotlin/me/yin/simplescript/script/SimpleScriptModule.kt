@@ -36,12 +36,12 @@ class SimpleScriptModule(
     }
 
     suspend fun load(): LoadSummary {
-        return manager.loadScripts()
+        return manager.load()
     }
 
     suspend fun close() {
         try {
-            manager.unloadScripts()
+            manager.unload()
         } finally {
             coroutineScope.cancel()
         }

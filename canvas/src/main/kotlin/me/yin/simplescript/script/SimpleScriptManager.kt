@@ -28,6 +28,14 @@ class SimpleScriptManager(
     private val lifecycleMutex: Mutex = Mutex()
     private val loadedScriptsById: MutableMap<String, LoadedScript> = linkedMapOf()
 
+    suspend fun load(): LoadSummary {
+        return loadScripts()
+    }
+
+    suspend fun unload() {
+        unloadScripts()
+    }
+
     suspend fun loadScripts(): LoadSummary = lifecycleMutex.withLock {
         var loaded: Int = 0
         val failed: MutableList<String> = mutableListOf()
