@@ -17,7 +17,7 @@ object SimpleScriptCompileChecker {
 
         val failed: MutableList<Path> = mutableListOf()
         for (argument: String in args) {
-            val script: Path = Path.of(argument).toAbsolutePath().normalize()
+            val script: Path = Path.of(argument)
             val result: ResultWithDiagnostics<CompiledScript> = runBlocking {
                 compiler.compile(script)
             }

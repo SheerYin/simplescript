@@ -21,7 +21,7 @@ class SimpleScriptManager(
     private val logger: Logger
 ) {
     val scriptRepository: SimpleScriptRepository = SimpleScriptRepository(
-        directory = simpleScript.dataPath.resolve("script/main").normalize(),
+        directory = simpleScript.dataPath.resolve("script/main"),
         logger = logger
     )
 

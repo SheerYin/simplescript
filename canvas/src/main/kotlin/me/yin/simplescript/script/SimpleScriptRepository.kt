@@ -38,7 +38,7 @@ class SimpleScriptRepository(
             return null
         }
 
-        val scriptPath: Path = directory.resolve("$scriptId.$SIMPLE_SCRIPT_EXTENSION").normalize()
+        val scriptPath: Path = directory.resolve("$scriptId.$SIMPLE_SCRIPT_EXTENSION")
         if (!Files.isRegularFile(scriptPath)) {
             return null
         }
